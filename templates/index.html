@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WAF Detection Tester</title>
+<title>AWS WAF Detection Tester</title>
 <style>
   :root {
     --bg: #0f172a;
@@ -16,6 +16,7 @@
     --danger: #ef4444;
     --success: #22c55e;
     --warning: #f59e0b;
+    --aws-orange: #ff9900;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -41,6 +42,14 @@
     border-radius: 4px;
     font-weight: 600;
   }
+  .header .aws-badge {
+    background: var(--aws-orange);
+    color: #000;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+  }
   .header .python-badge {
     background: #306998;
     color: #ffd43b;
@@ -50,11 +59,11 @@
     font-weight: 600;
   }
   .container {
-    max-width: 1200px;
+    max-width: 1400px;
     margin: 0 auto;
     padding: 24px;
     display: grid;
-    grid-template-columns: 340px 1fr;
+    grid-template-columns: 360px 1fr;
     gap: 24px;
   }
   .panel {
@@ -70,6 +79,11 @@
     letter-spacing: 0.5px;
     color: var(--text-muted);
     margin-bottom: 16px;
+  }
+  .panel h2 .aws-label {
+    color: var(--aws-orange);
+    font-size: 10px;
+    margin-left: 6px;
   }
   label {
     display: block;
@@ -115,6 +129,8 @@
   .attack-option:hover { border-color: var(--accent); }
   .attack-option input[type="checkbox"] { accent-color: var(--accent); }
   .attack-option.selected { border-color: var(--accent); background: rgba(59,130,246,0.08); }
+  .attack-option.aws-option { border-color: rgba(255,153,0,0.3); }
+  .attack-option.aws-option.selected { border-color: var(--aws-orange); background: rgba(255,153,0,0.08); }
   .btn {
     padding: 10px 20px;
     border: none;
@@ -161,7 +177,7 @@
 
   .stats-bar {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 12px;
   }
   .stat-card {
@@ -176,6 +192,7 @@
   .stat-card.blocked .value { color: var(--success); }
   .stat-card.passed .value { color: var(--danger); }
   .stat-card.error .value { color: var(--warning); }
+  .stat-card.rate .value { color: var(--accent); }
 
   .progress-bar {
     width: 100%;
@@ -192,10 +209,7 @@
   }
 
   .results-area { display: flex; flex-direction: column; gap: 16px; }
-  .log-container {
-    flex: 1;
-    min-height: 400px;
-  }
+  .log-container { flex: 1; min-height: 400px; }
   .log-table {
     width: 100%;
     border-collapse: collapse;
@@ -229,7 +243,7 @@
   .status-passed { background: rgba(239,68,68,0.15); color: var(--danger); }
   .status-error { background: rgba(245,158,11,0.15); color: var(--warning); }
   .payload-cell {
-    max-width: 400px;
+    max-width: 300px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -239,6 +253,14 @@
   .payload-cell:hover {
     white-space: normal;
     word-break: break-all;
+  }
+  .rule-group-cell {
+    font-size: 11px;
+    color: var(--aws-orange);
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .log-scroll {
     max-height: 600px;
@@ -276,17 +298,105 @@
     margin-bottom: 16px;
     line-height: 1.5;
   }
+  .note.aws-note {
+    background: rgba(255,153,0,0.1);
+    border: 1px solid rgba(255,153,0,0.2);
+  }
+  .section-divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 16px 0;
+  }
 
-  @media (max-width: 900px) {
+  .report-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    display: none;
+  }
+  .report-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin-top: 12px;
+  }
+  .report-table th {
+    text-align: left;
+    padding: 8px 12px;
+    background: var(--bg);
+    color: var(--text-muted);
+    font-size: 11px;
+    text-transform: uppercase;
+  }
+  .report-table td {
+    padding: 6px 12px;
+    border-top: 1px solid var(--border);
+  }
+  .report-table .bar-cell {
+    width: 200px;
+  }
+  .block-rate-bar {
+    height: 8px;
+    background: var(--bg);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .block-rate-bar .fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s;
+  }
+  .rate-high { background: var(--success); }
+  .rate-mid { background: var(--warning); }
+  .rate-low { background: var(--danger); }
+
+  .rate-limit-config {
+    display: none;
+    margin-top: 12px;
+    padding: 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+  .rate-limit-config.visible { display: block; }
+  .tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 16px;
+    border-bottom: 2px solid var(--border);
+  }
+  .tab {
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.15s;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+  .tab.aws-active {
+    color: var(--aws-orange);
+    border-bottom-color: var(--aws-orange);
+  }
+
+  @media (max-width: 1000px) {
     .container { grid-template-columns: 1fr; }
-    .stats-bar { grid-template-columns: repeat(2, 1fr); }
+    .stats-bar { grid-template-columns: repeat(3, 1fr); }
   }
 </style>
 </head>
 <body>
 
 <div class="header">
-  <h1>WAF Detection Tester</h1>
+  <h1>AWS WAF Detection Tester</h1>
+  <span class="aws-badge">AWS WAF</span>
   <span class="badge">SECURITY TESTING</span>
   <span class="python-badge">Python / Flask</span>
 </div>
@@ -297,7 +407,7 @@
       <h2>Target Configuration</h2>
       <div class="form-group">
         <label>Target URL / IP</label>
-        <input type="text" id="targetUrl" placeholder="http://192.168.1.1" value="http://"/>
+        <input type="text" id="targetUrl" placeholder="http://your-alb.amazonaws.com" value="http://"/>
       </div>
       <div class="form-group">
         <label>Port</label>
@@ -332,18 +442,47 @@
 
     <div class="panel" style="margin-top: 16px;">
       <h2>Attack Categories</h2>
-      <div class="note">
-        Payloads are based on gotestwaf OWASP test cases.
-        Requests are sent from the Python server (no CORS issues).
-        This tool is for authorized WAF testing only.
-      </div>
-      <div class="select-actions">
-        <button onclick="toggleAll(true)">Select All</button>
-        <button onclick="toggleAll(false)">Deselect All</button>
-      </div>
-      <div class="attack-grid" id="attackGrid"></div>
 
-      <h2 style="margin-top:16px;">Encoding</h2>
+      <div class="tabs">
+        <div class="tab active" onclick="showTab('general', this)">General</div>
+        <div class="tab" onclick="showTab('aws', this)">AWS WAF Rules</div>
+      </div>
+
+      <div id="tab-general">
+        <div class="note">
+          Payloads based on gotestwaf OWASP test cases.
+          Requests are sent from the Python server (no CORS issues).
+          For authorized WAF testing only.
+        </div>
+        <div class="select-actions">
+          <button onclick="toggleAll(true, 'general')">Select All</button>
+          <button onclick="toggleAll(false, 'general')">Deselect All</button>
+        </div>
+        <div class="attack-grid" id="attackGrid"></div>
+      </div>
+
+      <div id="tab-aws" style="display:none;">
+        <div class="note aws-note">
+          AWS WAF Managed Rules specific payloads mapped to rule groups:
+          CommonRuleSet, SQLiRuleSet, KnownBadInputsRuleSet, BotControlRuleSet, Rate-based Rules.
+        </div>
+        <div class="select-actions">
+          <button onclick="toggleAll(true, 'aws')">Select All</button>
+          <button onclick="toggleAll(false, 'aws')">Deselect All</button>
+        </div>
+        <div class="attack-grid" id="awsAttackGrid"></div>
+
+        <div class="rate-limit-config" id="rateLimitConfig">
+          <label>Number of requests for rate limit test</label>
+          <input type="number" id="rateLimitCount" value="120" min="10" max="2000"/>
+          <label style="margin-top:8px;">Delay between requests (ms)</label>
+          <input type="number" id="rateLimitDelay" value="50" min="0" max="5000"/>
+        </div>
+      </div>
+
+      <hr class="section-divider">
+
+      <h2>Encoding</h2>
       <div class="encoding-options">
         <label><input type="checkbox" value="plain" checked class="enc-opt"/> Plain</label>
         <label><input type="checkbox" value="url" checked class="enc-opt"/> URL Encode</label>
@@ -352,7 +491,7 @@
         <label><input type="checkbox" value="unicode" class="enc-opt"/> Unicode</label>
       </div>
 
-      <h2 style="margin-top:16px;">Injection Point</h2>
+      <h2>Injection Point</h2>
       <div class="form-group">
         <select id="injectionPoint">
           <option value="body-param">Body Parameter</option>
@@ -386,6 +525,10 @@
         <div class="value" id="statError">0</div>
         <div class="label">Error</div>
       </div>
+      <div class="stat-card rate">
+        <div class="value" id="statBlockRate">-</div>
+        <div class="label">Block Rate</div>
+      </div>
     </div>
 
     <div class="panel" style="padding:12px;">
@@ -393,19 +536,38 @@
       <div style="text-align:center;margin-top:6px;font-size:12px;color:var(--text-muted);" id="progressLabel">Ready</div>
     </div>
 
+    <div class="report-panel" id="reportPanel">
+      <h2>AWS WAF Rule Group Report</h2>
+      <table class="report-table" id="reportTable">
+        <thead>
+          <tr>
+            <th>Rule Group</th>
+            <th>Total</th>
+            <th>Blocked</th>
+            <th>Passed</th>
+            <th>Block Rate</th>
+            <th class="bar-cell">Coverage</th>
+          </tr>
+        </thead>
+        <tbody id="reportBody"></tbody>
+      </table>
+    </div>
+
     <div class="panel log-container">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
         <h2 style="margin-bottom:0;">Results Log</h2>
-        <div style="display:flex;gap:8px;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <button class="btn btn-sm" onclick="filterLog('all')" style="background:var(--border);color:var(--text);">All</button>
           <button class="btn btn-sm" onclick="filterLog('blocked')" style="background:rgba(34,197,94,0.15);color:var(--success);">Blocked</button>
           <button class="btn btn-sm" onclick="filterLog('passed')" style="background:rgba(239,68,68,0.15);color:var(--danger);">Passed</button>
           <button class="btn btn-sm" onclick="exportResults()" style="background:var(--border);color:var(--text);">Export CSV</button>
+          <button class="btn btn-sm" onclick="showReport()" style="background:rgba(255,153,0,0.15);color:var(--aws-orange);">WAF Report</button>
         </div>
       </div>
       <div class="log-scroll" id="logScroll">
         <div class="empty-state" id="emptyState">
           <p>Configure target and attack categories, then click <strong>Start Test</strong></p>
+          <p style="margin-top:12px;font-size:12px;">Use the <strong>AWS WAF Rules</strong> tab for AWS-specific test payloads</p>
         </div>
         <table class="log-table" id="logTable" style="display:none;">
           <thead>
@@ -413,10 +575,11 @@
               <th>#</th>
               <th>Category</th>
               <th>Payload</th>
-              <th>Encoding</th>
+              <th>Enc</th>
               <th>Status</th>
               <th>HTTP</th>
               <th>Time</th>
+              <th>Rule Group</th>
             </tr>
           </thead>
           <tbody id="logBody"></tbody>
@@ -428,21 +591,34 @@
 
 <script>
 const CATEGORIES = {{ categories | tojson }};
+const AWS_CATEGORIES = {{ aws_categories | tojson }};
+const RULE_GROUP_MAP = {{ rule_group_map | tojson }};
 
 const ENCODING_NAMES = {
   plain: 'Plain',
   url: 'URL',
   'double-url': 'DblURL',
   base64: 'Base64',
-  unicode: 'Unicode'
+  unicode: 'Unicode',
+  UA: 'UA',
+  none: '-'
 };
+
+function showTab(tab, el) {
+  document.getElementById('tab-general').style.display = tab === 'general' ? '' : 'none';
+  document.getElementById('tab-aws').style.display = tab === 'aws' ? '' : 'none';
+  document.querySelectorAll('.tabs .tab').forEach(t => {
+    t.classList.remove('active', 'aws-active');
+  });
+  el.classList.add(tab === 'aws' ? 'aws-active' : 'active');
+}
 
 const grid = document.getElementById('attackGrid');
 Object.keys(CATEGORIES).forEach(cat => {
   const count = CATEGORIES[cat].length;
   const div = document.createElement('div');
   div.className = 'attack-option selected';
-  div.innerHTML = `<input type="checkbox" checked data-category="${cat}"/> <span>${cat} <small style="color:var(--text-muted)">(${count})</small></span>`;
+  div.innerHTML = `<input type="checkbox" checked data-category="${cat}" data-group="general"/> <span>${cat} <small style="color:var(--text-muted)">(${count})</small></span>`;
   const cb = div.querySelector('input');
   cb.addEventListener('change', () => div.classList.toggle('selected', cb.checked));
   div.addEventListener('click', e => {
@@ -451,11 +627,40 @@ Object.keys(CATEGORIES).forEach(cat => {
   grid.appendChild(div);
 });
 
-function toggleAll(state) {
-  document.querySelectorAll('#attackGrid input[type="checkbox"]').forEach(cb => {
+const awsGrid = document.getElementById('awsAttackGrid');
+Object.keys(AWS_CATEGORIES).forEach(cat => {
+  const count = AWS_CATEGORIES[cat].length;
+  const ruleGroup = RULE_GROUP_MAP[cat] || cat;
+  const div = document.createElement('div');
+  div.className = 'attack-option aws-option';
+  const label = cat === 'AWS-RateLimit'
+    ? `${cat} <small style="color:var(--aws-orange)">(config)</small>`
+    : `${cat} <small style="color:var(--text-muted)">(${count})</small>`;
+  div.innerHTML = `<input type="checkbox" data-category="${cat}" data-group="aws"/> <span>${label}</span>`;
+  div.title = ruleGroup;
+  const cb = div.querySelector('input');
+  cb.addEventListener('change', () => {
+    div.classList.toggle('selected', cb.checked);
+    if (cat === 'AWS-RateLimit') {
+      document.getElementById('rateLimitConfig').classList.toggle('visible', cb.checked);
+    }
+  });
+  div.addEventListener('click', e => {
+    if (e.target !== cb) { cb.checked = !cb.checked; cb.dispatchEvent(new Event('change')); }
+  });
+  awsGrid.appendChild(div);
+});
+
+function toggleAll(state, group) {
+  const selector = group === 'aws' ? '#awsAttackGrid' : '#attackGrid';
+  document.querySelectorAll(`${selector} input[type="checkbox"]`).forEach(cb => {
     cb.checked = state;
     cb.closest('.attack-option').classList.toggle('selected', state);
   });
+  if (group === 'aws') {
+    document.getElementById('rateLimitConfig').classList.toggle('visible',
+      state && document.querySelector('[data-category="AWS-RateLimit"]').checked);
+  }
 }
 
 let running = false;
@@ -465,7 +670,7 @@ let stats = { total: 0, blocked: 0, passed: 0, error: 0 };
 let currentFilter = 'all';
 
 function getSelectedCategories() {
-  return Array.from(document.querySelectorAll('#attackGrid input:checked'))
+  return Array.from(document.querySelectorAll('#attackGrid input:checked, #awsAttackGrid input:checked'))
     .map(cb => cb.dataset.category);
 }
 
@@ -501,6 +706,11 @@ function updateStats() {
   document.getElementById('statBlocked').textContent = stats.blocked;
   document.getElementById('statPassed').textContent = stats.passed;
   document.getElementById('statError').textContent = stats.error;
+  const tested = stats.blocked + stats.passed;
+  if (tested > 0) {
+    document.getElementById('statBlockRate').textContent =
+      Math.round(stats.blocked / tested * 100) + '%';
+  }
 }
 
 function escapeHtml(str) {
@@ -514,14 +724,16 @@ function addLogRow(result) {
   const tr = document.createElement('tr');
   tr.dataset.status = result.status;
   if (currentFilter !== 'all' && result.status !== currentFilter) tr.style.display = 'none';
+  const ruleGroup = result.rule_group || RULE_GROUP_MAP[result.category] || '';
   tr.innerHTML = `
     <td>${result.index}</td>
     <td>${result.category}</td>
-    <td class="payload-cell" title="${result.payload.replace(/"/g, '&quot;')}">${escapeHtml(result.payload)}</td>
+    <td class="payload-cell" title="${(result.payload || '').replace(/"/g, '&quot;')}">${escapeHtml(result.payload || '')}</td>
     <td>${ENCODING_NAMES[result.encoding] || result.encoding}</td>
     <td><span class="status-badge status-${result.status}">${result.status.toUpperCase()}</span></td>
     <td>${result.http_status || '-'}</td>
     <td>${result.time}ms</td>
+    <td class="rule-group-cell" title="${ruleGroup}">${ruleGroup}</td>
   `;
   tbody.appendChild(tr);
   const logScroll = document.getElementById('logScroll');
@@ -533,6 +745,43 @@ function filterLog(filter) {
   document.querySelectorAll('#logBody tr').forEach(tr => {
     tr.style.display = (filter === 'all' || tr.dataset.status === filter) ? '' : 'none';
   });
+}
+
+function showReport() {
+  if (results.length === 0) { alert('No results to report.'); return; }
+
+  const panel = document.getElementById('reportPanel');
+  const tbody = document.getElementById('reportBody');
+  tbody.innerHTML = '';
+
+  const groups = {};
+  results.forEach(r => {
+    const rg = r.rule_group || RULE_GROUP_MAP[r.category] || 'Other';
+    if (!groups[rg]) groups[rg] = { blocked: 0, passed: 0, error: 0, total: 0 };
+    groups[rg].total++;
+    groups[rg][r.status]++;
+  });
+
+  Object.entries(groups).sort((a, b) => {
+    const rateA = a[1].total > 0 ? a[1].blocked / a[1].total : 0;
+    const rateB = b[1].total > 0 ? b[1].blocked / b[1].total : 0;
+    return rateA - rateB;
+  }).forEach(([name, s]) => {
+    const rate = s.total > 0 ? Math.round(s.blocked / s.total * 100) : 0;
+    const rateClass = rate >= 80 ? 'rate-high' : rate >= 50 ? 'rate-mid' : 'rate-low';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="font-size:12px;">${name}</td>
+      <td>${s.total}</td>
+      <td style="color:var(--success)">${s.blocked}</td>
+      <td style="color:var(--danger)">${s.passed}</td>
+      <td><strong>${rate}%</strong></td>
+      <td class="bar-cell"><div class="block-rate-bar"><div class="fill ${rateClass}" style="width:${rate}%"></div></div></td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  panel.style.display = '';
 }
 
 async function startTest() {
@@ -554,6 +803,8 @@ async function startTest() {
   document.getElementById('emptyState').style.display = 'none';
   document.getElementById('btnStart').style.display = 'none';
   document.getElementById('btnStop').style.display = '';
+  document.getElementById('reportPanel').style.display = 'none';
+  document.getElementById('statBlockRate').textContent = '-';
   updateStats();
 
   const method = document.getElementById('httpMethod').value;
@@ -562,20 +813,27 @@ async function startTest() {
   const injectionPoint = document.getElementById('injectionPoint').value;
   const customHeaders = parseCustomHeaders();
 
+  const payload = {
+    target_url: targetUrl,
+    method: method,
+    categories: categories,
+    encodings: encodings,
+    injection_point: injectionPoint,
+    custom_headers: customHeaders,
+    delay: delay,
+    timeout: timeout
+  };
+
+  if (categories.includes('AWS-RateLimit')) {
+    payload.rate_limit_count = parseInt(document.getElementById('rateLimitCount').value) || 120;
+    payload.rate_limit_delay = parseInt(document.getElementById('rateLimitDelay').value) || 50;
+  }
+
   try {
     const resp = await fetch('/api/test/batch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        target_url: targetUrl,
-        method: method,
-        categories: categories,
-        encodings: encodings,
-        injection_point: injectionPoint,
-        custom_headers: customHeaders,
-        delay: delay,
-        timeout: timeout
-      }),
+      body: JSON.stringify(payload),
       signal: abortController.signal
     });
 
@@ -611,6 +869,7 @@ async function startTest() {
           document.getElementById('progressLabel').textContent = `Testing ${data.index} / ${totalExpected} (${progress}%)`;
         } else if (data.type === 'done') {
           document.getElementById('progressLabel').textContent = 'Complete';
+          showReport();
         }
       }
     }
@@ -639,15 +898,16 @@ function stopTest() {
 
 function exportResults() {
   if (results.length === 0) { alert('No results to export.'); return; }
-  let csv = 'Index,Category,Payload,Encoding,Status,HTTP Status,Time(ms)\n';
+  let csv = 'Index,Category,Payload,Encoding,Status,HTTP Status,Time(ms),Rule Group\n';
   results.forEach(r => {
-    csv += `${r.index},"${r.category}","${r.payload.replace(/"/g, '""')}","${r.encoding}","${r.status}",${r.http_status},${r.time}\n`;
+    const rg = r.rule_group || RULE_GROUP_MAP[r.category] || '';
+    csv += `${r.index},"${r.category}","${(r.payload || '').replace(/"/g, '""')}","${r.encoding}","${r.status}",${r.http_status},${r.time},"${rg}"\n`;
   });
   const blob = new Blob([csv], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `waf-test-results-${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.csv`;
+  a.download = `aws-waf-test-results-${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }

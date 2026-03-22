@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WAF Detection Tester</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --surface: #1e293b;
+    --border: #334155;
+    --text: #e2e8f0;
+    --text-muted: #94a3b8;
+    --accent: #3b82f6;
+    --accent-hover: #2563eb;
+    --danger: #ef4444;
+    --success: #22c55e;
+    --warning: #f59e0b;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .header h1 { font-size: 20px; font-weight: 600; }
+  .header .badge {
+    background: var(--danger);
+    color: #fff;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+  .header .python-badge {
+    background: #306998;
+    color: #ffd43b;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px;
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: 24px;
+  }
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+  }
+  .panel h2 {
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+  }
+  label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 6px;
+    color: var(--text-muted);
+  }
+  input[type="text"], input[type="number"], select, textarea {
+    width: 100%;
+    padding: 8px 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--accent);
+  }
+  .form-group { margin-bottom: 16px; }
+  .attack-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .attack-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+    font-size: 13px;
+  }
+  .attack-option:hover { border-color: var(--accent); }
+  .attack-option input[type="checkbox"] { accent-color: var(--accent); }
+  .attack-option.selected { border-color: var(--accent); background: rgba(59,130,246,0.08); }
+  .btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+    font-family: inherit;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    width: 100%;
+  }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-danger {
+    background: var(--danger);
+    color: #fff;
+    width: 100%;
+    margin-top: 8px;
+  }
+  .btn-sm {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+  .select-actions {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .select-actions button {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .select-actions button:hover { border-color: var(--accent); color: var(--text); }
+
+  .stats-bar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    text-align: center;
+  }
+  .stat-card .value { font-size: 28px; font-weight: 700; }
+  .stat-card .label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; margin-top: 4px; }
+  .stat-card.blocked .value { color: var(--success); }
+  .stat-card.passed .value { color: var(--danger); }
+  .stat-card.error .value { color: var(--warning); }
+
+  .progress-bar {
+    width: 100%;
+    height: 6px;
+    background: var(--bg);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .progress-bar .fill {
+    height: 100%;
+    background: var(--accent);
+    transition: width 0.3s;
+    border-radius: 3px;
+  }
+
+  .results-area { display: flex; flex-direction: column; gap: 16px; }
+  .log-container {
+    flex: 1;
+    min-height: 400px;
+  }
+  .log-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .log-table th {
+    text-align: left;
+    padding: 8px 12px;
+    background: var(--bg);
+    color: var(--text-muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    position: sticky;
+    top: 0;
+  }
+  .log-table td {
+    padding: 6px 12px;
+    border-top: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .log-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .status-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .status-blocked { background: rgba(34,197,94,0.15); color: var(--success); }
+  .status-passed { background: rgba(239,68,68,0.15); color: var(--danger); }
+  .status-error { background: rgba(245,158,11,0.15); color: var(--warning); }
+  .payload-cell {
+    max-width: 400px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 12px;
+  }
+  .payload-cell:hover {
+    white-space: normal;
+    word-break: break-all;
+  }
+  .log-scroll {
+    max-height: 600px;
+    overflow-y: auto;
+  }
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+  }
+  .empty-state p { margin-top: 8px; font-size: 14px; }
+
+  .encoding-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+  .encoding-options label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--text);
+    cursor: pointer;
+    margin-bottom: 0;
+  }
+  .note {
+    font-size: 11px;
+    color: var(--text-muted);
+    background: rgba(245,158,11,0.1);
+    border: 1px solid rgba(245,158,11,0.2);
+    border-radius: 6px;
+    padding: 10px;
+    margin-bottom: 16px;
+    line-height: 1.5;
+  }
+
+  @media (max-width: 900px) {
+    .container { grid-template-columns: 1fr; }
+    .stats-bar { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>WAF Detection Tester</h1>
+  <span class="badge">SECURITY TESTING</span>
+  <span class="python-badge">Python / Flask</span>
+</div>
+
+<div class="container">
+  <div>
+    <div class="panel">
+      <h2>Target Configuration</h2>
+      <div class="form-group">
+        <label>Target URL / IP</label>
+        <input type="text" id="targetUrl" placeholder="http://192.168.1.1" value="http://"/>
+      </div>
+      <div class="form-group">
+        <label>Port</label>
+        <input type="number" id="targetPort" placeholder="80" value="80"/>
+      </div>
+      <div class="form-group">
+        <label>Path</label>
+        <input type="text" id="targetPath" placeholder="/" value="/"/>
+      </div>
+      <div class="form-group">
+        <label>HTTP Method</label>
+        <select id="httpMethod">
+          <option value="GET">GET</option>
+          <option value="POST" selected>POST</option>
+          <option value="PUT">PUT</option>
+          <option value="PATCH">PATCH</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Request Delay (ms)</label>
+        <input type="number" id="requestDelay" value="200" min="0" max="10000"/>
+      </div>
+      <div class="form-group">
+        <label>Timeout (seconds)</label>
+        <input type="number" id="requestTimeout" value="10" min="1" max="60"/>
+      </div>
+      <div class="form-group">
+        <label>Custom Headers (one per line, Key: Value)</label>
+        <textarea id="customHeaders" rows="3" placeholder="X-Custom: value&#10;Authorization: Bearer token"></textarea>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top: 16px;">
+      <h2>Attack Categories</h2>
+      <div class="note">
+        Payloads are based on gotestwaf OWASP test cases.
+        Requests are sent from the Python server (no CORS issues).
+        This tool is for authorized WAF testing only.
+      </div>
+      <div class="select-actions">
+        <button onclick="toggleAll(true)">Select All</button>
+        <button onclick="toggleAll(false)">Deselect All</button>
+      </div>
+      <div class="attack-grid" id="attackGrid"></div>
+
+      <h2 style="margin-top:16px;">Encoding</h2>
+      <div class="encoding-options">
+        <label><input type="checkbox" value="plain" checked class="enc-opt"/> Plain</label>
+        <label><input type="checkbox" value="url" checked class="enc-opt"/> URL Encode</label>
+        <label><input type="checkbox" value="double-url" class="enc-opt"/> Double URL</label>
+        <label><input type="checkbox" value="base64" class="enc-opt"/> Base64</label>
+        <label><input type="checkbox" value="unicode" class="enc-opt"/> Unicode</label>
+      </div>
+
+      <h2 style="margin-top:16px;">Injection Point</h2>
+      <div class="form-group">
+        <select id="injectionPoint">
+          <option value="body-param">Body Parameter</option>
+          <option value="url-param">URL Parameter</option>
+          <option value="header">Header (X-Test)</option>
+          <option value="cookie">Cookie</option>
+          <option value="url-path">URL Path</option>
+        </select>
+      </div>
+
+      <button class="btn btn-primary" id="btnStart" onclick="startTest()">Start Test</button>
+      <button class="btn btn-danger" id="btnStop" onclick="stopTest()" style="display:none;">Stop Test</button>
+    </div>
+  </div>
+
+  <div class="results-area">
+    <div class="stats-bar">
+      <div class="stat-card">
+        <div class="value" id="statTotal">0</div>
+        <div class="label">Total</div>
+      </div>
+      <div class="stat-card blocked">
+        <div class="value" id="statBlocked">0</div>
+        <div class="label">Blocked</div>
+      </div>
+      <div class="stat-card passed">
+        <div class="value" id="statPassed">0</div>
+        <div class="label">Passed</div>
+      </div>
+      <div class="stat-card error">
+        <div class="value" id="statError">0</div>
+        <div class="label">Error</div>
+      </div>
+    </div>
+
+    <div class="panel" style="padding:12px;">
+      <div class="progress-bar"><div class="fill" id="progressFill" style="width:0%"></div></div>
+      <div style="text-align:center;margin-top:6px;font-size:12px;color:var(--text-muted);" id="progressLabel">Ready</div>
+    </div>
+
+    <div class="panel log-container">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <h2 style="margin-bottom:0;">Results Log</h2>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-sm" onclick="filterLog('all')" style="background:var(--border);color:var(--text);">All</button>
+          <button class="btn btn-sm" onclick="filterLog('blocked')" style="background:rgba(34,197,94,0.15);color:var(--success);">Blocked</button>
+          <button class="btn btn-sm" onclick="filterLog('passed')" style="background:rgba(239,68,68,0.15);color:var(--danger);">Passed</button>
+          <button class="btn btn-sm" onclick="exportResults()" style="background:var(--border);color:var(--text);">Export CSV</button>
+        </div>
+      </div>
+      <div class="log-scroll" id="logScroll">
+        <div class="empty-state" id="emptyState">
+          <p>Configure target and attack categories, then click <strong>Start Test</strong></p>
+        </div>
+        <table class="log-table" id="logTable" style="display:none;">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Category</th>
+              <th>Payload</th>
+              <th>Encoding</th>
+              <th>Status</th>
+              <th>HTTP</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody id="logBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const CATEGORIES = {{ categories | tojson }};
+
+const ENCODING_NAMES = {
+  plain: 'Plain',
+  url: 'URL',
+  'double-url': 'DblURL',
+  base64: 'Base64',
+  unicode: 'Unicode'
+};
+
+const grid = document.getElementById('attackGrid');
+Object.keys(CATEGORIES).forEach(cat => {
+  const count = CATEGORIES[cat].length;
+  const div = document.createElement('div');
+  div.className = 'attack-option selected';
+  div.innerHTML = `<input type="checkbox" checked data-category="${cat}"/> <span>${cat} <small style="color:var(--text-muted)">(${count})</small></span>`;
+  const cb = div.querySelector('input');
+  cb.addEventListener('change', () => div.classList.toggle('selected', cb.checked));
+  div.addEventListener('click', e => {
+    if (e.target !== cb) { cb.checked = !cb.checked; cb.dispatchEvent(new Event('change')); }
+  });
+  grid.appendChild(div);
+});
+
+function toggleAll(state) {
+  document.querySelectorAll('#attackGrid input[type="checkbox"]').forEach(cb => {
+    cb.checked = state;
+    cb.closest('.attack-option').classList.toggle('selected', state);
+  });
+}
+
+let running = false;
+let abortController = null;
+let results = [];
+let stats = { total: 0, blocked: 0, passed: 0, error: 0 };
+let currentFilter = 'all';
+
+function getSelectedCategories() {
+  return Array.from(document.querySelectorAll('#attackGrid input:checked'))
+    .map(cb => cb.dataset.category);
+}
+
+function getSelectedEncodings() {
+  return Array.from(document.querySelectorAll('.enc-opt:checked')).map(cb => cb.value);
+}
+
+function buildTargetUrl() {
+  const base = document.getElementById('targetUrl').value.replace(/\/+$/, '');
+  const port = document.getElementById('targetPort').value;
+  const path = document.getElementById('targetPath').value || '/';
+  let url = base;
+  if (!/:\d+/.test(base.replace(/^https?:\/\//, '')) && port && port !== '80' && port !== '443') {
+    url += ':' + port;
+  }
+  url += path.startsWith('/') ? path : '/' + path;
+  return url;
+}
+
+function parseCustomHeaders() {
+  const text = document.getElementById('customHeaders').value.trim();
+  const headers = {};
+  if (!text) return headers;
+  text.split('\n').forEach(line => {
+    const idx = line.indexOf(':');
+    if (idx > 0) headers[line.substring(0, idx).trim()] = line.substring(idx + 1).trim();
+  });
+  return headers;
+}
+
+function updateStats() {
+  document.getElementById('statTotal').textContent = stats.total;
+  document.getElementById('statBlocked').textContent = stats.blocked;
+  document.getElementById('statPassed').textContent = stats.passed;
+  document.getElementById('statError').textContent = stats.error;
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function addLogRow(result) {
+  const tbody = document.getElementById('logBody');
+  const tr = document.createElement('tr');
+  tr.dataset.status = result.status;
+  if (currentFilter !== 'all' && result.status !== currentFilter) tr.style.display = 'none';
+  tr.innerHTML = `
+    <td>${result.index}</td>
+    <td>${result.category}</td>
+    <td class="payload-cell" title="${result.payload.replace(/"/g, '&quot;')}">${escapeHtml(result.payload)}</td>
+    <td>${ENCODING_NAMES[result.encoding] || result.encoding}</td>
+    <td><span class="status-badge status-${result.status}">${result.status.toUpperCase()}</span></td>
+    <td>${result.http_status || '-'}</td>
+    <td>${result.time}ms</td>
+  `;
+  tbody.appendChild(tr);
+  const logScroll = document.getElementById('logScroll');
+  logScroll.scrollTop = logScroll.scrollHeight;
+}
+
+function filterLog(filter) {
+  currentFilter = filter;
+  document.querySelectorAll('#logBody tr').forEach(tr => {
+    tr.style.display = (filter === 'all' || tr.dataset.status === filter) ? '' : 'none';
+  });
+}
+
+async function startTest() {
+  const categories = getSelectedCategories();
+  if (categories.length === 0) { alert('Select at least one attack category.'); return; }
+
+  const targetUrl = buildTargetUrl();
+  if (!targetUrl || targetUrl === 'http://') { alert('Enter a valid target URL.'); return; }
+
+  const encodings = getSelectedEncodings();
+  if (encodings.length === 0) { alert('Select at least one encoding.'); return; }
+
+  running = true;
+  abortController = new AbortController();
+  results = [];
+  stats = { total: 0, blocked: 0, passed: 0, error: 0 };
+  document.getElementById('logBody').innerHTML = '';
+  document.getElementById('logTable').style.display = '';
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('btnStart').style.display = 'none';
+  document.getElementById('btnStop').style.display = '';
+  updateStats();
+
+  const method = document.getElementById('httpMethod').value;
+  const delay = parseInt(document.getElementById('requestDelay').value) || 0;
+  const timeout = parseInt(document.getElementById('requestTimeout').value) || 10;
+  const injectionPoint = document.getElementById('injectionPoint').value;
+  const customHeaders = parseCustomHeaders();
+
+  try {
+    const resp = await fetch('/api/test/batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        target_url: targetUrl,
+        method: method,
+        categories: categories,
+        encodings: encodings,
+        injection_point: injectionPoint,
+        custom_headers: customHeaders,
+        delay: delay,
+        timeout: timeout
+      }),
+      signal: abortController.signal
+    });
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let totalExpected = 0;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        const data = JSON.parse(line);
+
+        if (data.type === 'start') {
+          totalExpected = data.total;
+          stats.total = totalExpected;
+          updateStats();
+        } else if (data.type === 'result') {
+          stats[data.status]++;
+          updateStats();
+          results.push(data);
+          addLogRow(data);
+
+          const progress = Math.round((data.index / totalExpected) * 100);
+          document.getElementById('progressFill').style.width = progress + '%';
+          document.getElementById('progressLabel').textContent = `Testing ${data.index} / ${totalExpected} (${progress}%)`;
+        } else if (data.type === 'done') {
+          document.getElementById('progressLabel').textContent = 'Complete';
+        }
+      }
+    }
+  } catch (e) {
+    if (e.name !== 'AbortError') {
+      console.error('Test error:', e);
+      document.getElementById('progressLabel').textContent = 'Error: ' + e.message;
+    }
+  }
+
+  running = false;
+  document.getElementById('btnStart').style.display = '';
+  document.getElementById('btnStop').style.display = 'none';
+  if (document.getElementById('progressLabel').textContent.startsWith('Testing')) {
+    document.getElementById('progressLabel').textContent = 'Stopped';
+  }
+}
+
+function stopTest() {
+  running = false;
+  if (abortController) abortController.abort();
+  document.getElementById('btnStart').style.display = '';
+  document.getElementById('btnStop').style.display = 'none';
+  document.getElementById('progressLabel').textContent = 'Stopped';
+}
+
+function exportResults() {
+  if (results.length === 0) { alert('No results to export.'); return; }
+  let csv = 'Index,Category,Payload,Encoding,Status,HTTP Status,Time(ms)\n';
+  results.forEach(r => {
+    csv += `${r.index},"${r.category}","${r.payload.replace(/"/g, '""')}","${r.encoding}","${r.status}",${r.http_status},${r.time}\n`;
+  });
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `waf-test-results-${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+</script>
+
+</body>
+</html>

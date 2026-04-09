@@ -386,6 +386,102 @@ def get_categories():
     return jsonify(result)
 
 
+@app.route("/api/test/connection", methods=["POST"])
+def test_connection():
+    data = request.get_json()
+    target_url = data.get("target_url", "")
+    timeout = data.get("timeout", 10)
+
+    checks = {}
+
+    # 1. DNS resolution
+    try:
+        from urllib.parse import urlparse
+        import socket
+        parsed = urlparse(target_url)
+        hostname = parsed.hostname
+        port = parsed.port or (443 if parsed.scheme == "https" else 80)
+        start = time.time()
+        ip = socket.gethostbyname(hostname)
+        dns_time = int((time.time() - start) * 1000)
+        checks["dns"] = {"status": "ok", "ip": ip, "time": dns_time}
+    except Exception as e:
+        checks["dns"] = {"status": "error", "detail": str(e)}
+
+    # 2. TCP connection
+    try:
+        import socket
+        start = time.time()
+        sock = socket.create_connection((hostname, port), timeout=timeout)
+        tcp_time = int((time.time() - start) * 1000)
+        sock.close()
+        checks["tcp"] = {"status": "ok", "port": port, "time": tcp_time}
+    except Exception as e:
+        checks["tcp"] = {"status": "error", "detail": str(e)}
+
+    # 3. HTTP request (normal, no payload)
+    start = time.time()
+    try:
+        resp = http_requests.get(target_url, timeout=timeout, verify=False,
+                                 allow_redirects=True,
+                                 headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"})
+        http_time = int((time.time() - start) * 1000)
+        resp_headers = dict(resp.headers)
+        server = resp_headers.get("server", resp_headers.get("Server", ""))
+        powered_by = resp_headers.get("x-powered-by", resp_headers.get("X-Powered-By", ""))
+        waf_headers = {}
+        for h in ("x-amzn-waf-action", "x-amz-cf-id", "x-amzn-requestid",
+                   "x-cache", "via", "x-amz-cf-pop"):
+            val = resp_headers.get(h, resp_headers.get(h.title(), ""))
+            if val:
+                waf_headers[h] = val
+        checks["http"] = {
+            "status": "ok",
+            "http_status": resp.status_code,
+            "time": http_time,
+            "server": server,
+            "powered_by": powered_by,
+            "waf_headers": waf_headers,
+            "final_url": resp.url,
+            "redirected": resp.url != target_url,
+            "content_length": len(resp.content),
+        }
+    except http_requests.exceptions.SSLError as e:
+        http_time = int((time.time() - start) * 1000)
+        checks["http"] = {"status": "error", "detail": f"SSL error: {e}", "time": http_time}
+    except http_requests.exceptions.Timeout:
+        http_time = int((time.time() - start) * 1000)
+        checks["http"] = {"status": "error", "detail": "timeout", "time": http_time}
+    except Exception as e:
+        http_time = int((time.time() - start) * 1000)
+        checks["http"] = {"status": "error", "detail": str(e), "time": http_time}
+
+    # 4. WAF detection (send a known-bad request to see if it's blocked)
+    try:
+        start = time.time()
+        waf_resp = http_requests.get(
+            target_url,
+            params={"test": "<script>alert(1)</script>"},
+            timeout=timeout, verify=False, allow_redirects=True,
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"})
+        waf_time = int((time.time() - start) * 1000)
+        waf_detected = waf_resp.status_code in (403, 406, 429, 493)
+        if not waf_detected and waf_resp.text:
+            waf_detected = any(w in waf_resp.text.lower() for w in
+                             ["blocked", "forbidden", "request blocked", "not acceptable"])
+        checks["waf_probe"] = {
+            "status": "ok",
+            "http_status": waf_resp.status_code,
+            "time": waf_time,
+            "waf_detected": waf_detected,
+        }
+    except Exception as e:
+        checks["waf_probe"] = {"status": "error", "detail": str(e)}
+
+    all_ok = all(c.get("status") == "ok" for c in checks.values())
+    return jsonify({"ok": all_ok, "checks": checks})
+
+
 @app.route("/api/test", methods=["POST"])
 def run_single_test():
     data = request.get_json()

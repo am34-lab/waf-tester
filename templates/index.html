@@ -298,6 +298,50 @@
     margin-bottom: 16px;
     line-height: 1.5;
   }
+  .conn-test-result {
+    margin-top: 12px;
+    padding: 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    line-height: 1.8;
+    display: none;
+  }
+  .conn-test-result.visible { display: block; }
+  .conn-test-result .check-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+  }
+  .conn-test-result .check-icon {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .check-ok { background: rgba(34,197,94,0.2); color: var(--success); }
+  .check-fail { background: rgba(239,68,68,0.2); color: var(--danger); }
+  .check-detail { color: var(--text-muted); font-size: 11px; }
+  .btn-test-conn {
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    width: 100%;
+    padding: 8px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+  .btn-test-conn:hover { background: rgba(59,130,246,0.1); }
+  .btn-test-conn:disabled { opacity: 0.5; cursor: not-allowed; }
   .note.aws-note {
     background: rgba(255,153,0,0.1);
     border: 1px solid rgba(255,153,0,0.2);
@@ -442,6 +486,9 @@
         <label>Custom Headers (one per line, Key: Value)</label>
         <textarea id="customHeaders" rows="3" placeholder="X-Custom: value&#10;Authorization: Bearer token"></textarea>
       </div>
+
+      <button class="btn-test-conn" id="btnConnTest" onclick="testConnection()">Connection Test</button>
+      <div class="conn-test-result" id="connTestResult"></div>
     </div>
 
     <div class="panel" style="margin-top: 16px;">
@@ -665,6 +712,92 @@ function toggleAll(state, group) {
     document.getElementById('rateLimitConfig').classList.toggle('visible',
       state && document.querySelector('[data-category="AWS-RateLimit"]').checked);
   }
+}
+
+async function testConnection() {
+  const targetUrl = buildTargetUrl();
+  if (!targetUrl || targetUrl === 'http://') { alert('Enter a valid target URL.'); return; }
+
+  const btn = document.getElementById('btnConnTest');
+  const resultDiv = document.getElementById('connTestResult');
+  btn.disabled = true;
+  btn.textContent = 'Testing...';
+  resultDiv.className = 'conn-test-result visible';
+  resultDiv.style.background = 'var(--bg)';
+  resultDiv.style.border = '1px solid var(--border)';
+  resultDiv.innerHTML = '<div style="color:var(--text-muted)">Connecting...</div>';
+
+  const timeout = parseInt(document.getElementById('requestTimeout').value) || 10;
+
+  try {
+    const resp = await fetch('/api/test/connection', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target_url: targetUrl, timeout: timeout })
+    });
+    const data = await resp.json();
+    let html = '';
+
+    // DNS
+    const dns = data.checks.dns;
+    if (dns.status === 'ok') {
+      html += `<div class="check-row"><span class="check-icon check-ok">&#10003;</span><span>DNS: ${dns.ip} <span class="check-detail">(${dns.time}ms)</span></span></div>`;
+    } else {
+      html += `<div class="check-row"><span class="check-icon check-fail">&#10007;</span><span>DNS: ${dns.detail}</span></div>`;
+    }
+
+    // TCP
+    const tcp = data.checks.tcp;
+    if (tcp.status === 'ok') {
+      html += `<div class="check-row"><span class="check-icon check-ok">&#10003;</span><span>TCP port ${tcp.port} <span class="check-detail">(${tcp.time}ms)</span></span></div>`;
+    } else {
+      html += `<div class="check-row"><span class="check-icon check-fail">&#10007;</span><span>TCP: ${tcp.detail}</span></div>`;
+    }
+
+    // HTTP
+    const http = data.checks.http;
+    if (http.status === 'ok') {
+      let httpDetail = `HTTP ${http.http_status} <span class="check-detail">(${http.time}ms)`;
+      if (http.server) httpDetail += ` | Server: ${http.server}`;
+      if (http.powered_by) httpDetail += ` | ${http.powered_by}`;
+      httpDetail += `</span>`;
+      if (http.redirected) httpDetail += `<br><span class="check-detail" style="margin-left:26px;">Redirected to: ${escapeHtml(http.final_url)}</span>`;
+      if (http.waf_headers && Object.keys(http.waf_headers).length > 0) {
+        httpDetail += `<br><span class="check-detail" style="margin-left:26px;color:var(--aws-orange)">`;
+        Object.entries(http.waf_headers).forEach(([k, v]) => { httpDetail += `${k}: ${v} | `; });
+        httpDetail += `</span>`;
+      }
+      html += `<div class="check-row"><span class="check-icon check-ok">&#10003;</span><span>${httpDetail}</span></div>`;
+    } else {
+      html += `<div class="check-row"><span class="check-icon check-fail">&#10007;</span><span>HTTP: ${http.detail}</span></div>`;
+    }
+
+    // WAF Probe
+    const waf = data.checks.waf_probe;
+    if (waf.status === 'ok') {
+      if (waf.waf_detected) {
+        html += `<div class="check-row"><span class="check-icon check-ok">&#10003;</span><span>WAF Detected <span class="check-detail">(probe HTTP ${waf.http_status}, ${waf.time}ms)</span></span></div>`;
+      } else {
+        html += `<div class="check-row"><span class="check-icon check-fail">!</span><span>WAF Not Detected <span class="check-detail">(probe HTTP ${waf.http_status}, ${waf.time}ms - WAF may not be active)</span></span></div>`;
+      }
+    } else {
+      html += `<div class="check-row"><span class="check-icon check-fail">&#10007;</span><span>WAF Probe: ${waf.detail}</span></div>`;
+    }
+
+    resultDiv.innerHTML = html;
+
+    if (data.ok) {
+      resultDiv.style.border = '1px solid rgba(34,197,94,0.3)';
+    } else {
+      resultDiv.style.border = '1px solid rgba(239,68,68,0.3)';
+    }
+  } catch (e) {
+    resultDiv.innerHTML = `<div class="check-row"><span class="check-icon check-fail">&#10007;</span><span>Error: ${e.message}</span></div>`;
+    resultDiv.style.border = '1px solid rgba(239,68,68,0.3)';
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Connection Test';
 }
 
 let running = false;

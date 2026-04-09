@@ -434,6 +434,10 @@
         <label>Timeout (seconds)</label>
         <input type="number" id="requestTimeout" value="10" min="1" max="60"/>
       </div>
+      <div class="form-group" style="display:flex;align-items:center;gap:8px;">
+        <input type="checkbox" id="followRedirects" checked style="width:auto;accent-color:var(--accent);"/>
+        <label for="followRedirects" style="margin:0;cursor:pointer;">Follow Redirects (WordPress/CloudFront)</label>
+      </div>
       <div class="form-group">
         <label>Custom Headers (one per line, Key: Value)</label>
         <textarea id="customHeaders" rows="3" placeholder="X-Custom: value&#10;Authorization: Bearer token"></textarea>
@@ -813,6 +817,8 @@ async function startTest() {
   const injectionPoint = document.getElementById('injectionPoint').value;
   const customHeaders = parseCustomHeaders();
 
+  const followRedirects = document.getElementById('followRedirects').checked;
+
   const payload = {
     target_url: targetUrl,
     method: method,
@@ -821,7 +827,8 @@ async function startTest() {
     injection_point: injectionPoint,
     custom_headers: customHeaders,
     delay: delay,
-    timeout: timeout
+    timeout: timeout,
+    follow_redirects: followRedirects
   };
 
   if (categories.includes('AWS-RateLimit')) {

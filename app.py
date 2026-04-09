@@ -299,30 +299,33 @@ def classify_response(status_code, body, headers=None):
 
     if status_code == 0:
         return "error", aws_waf_info
+    # 3xx redirects are not WAF blocks
+    if 300 <= status_code < 400:
+        return "passed", aws_waf_info
     if status_code in (403, 406, 429, 493):
         return "blocked", aws_waf_info
     if status_code >= 500:
         return "blocked", aws_waf_info
+    # Only check body keywords on non-redirect responses
     if body and any(
         word in body.lower()
-        for word in ["blocked", "forbidden", "denied", "waf", "security",
-                     "violation", "not acceptable", "request blocked",
-                     "aws waf", "cloudfront"]
+        for word in ["blocked", "forbidden", "denied", "request blocked",
+                     "not acceptable", "violation"]
     ):
         return "blocked", aws_waf_info
     return "passed", aws_waf_info
 
 
-def send_request(url, method, headers, body, timeout):
+def send_request(url, method, headers, body, timeout, follow_redirects=True):
     start = time.time()
     try:
         if method == "GET":
             resp = http_requests.get(url, headers=headers, timeout=timeout,
-                                     verify=False, allow_redirects=False)
+                                     verify=False, allow_redirects=follow_redirects)
         else:
             resp = http_requests.request(method, url, headers=headers, data=body,
                                          timeout=timeout, verify=False,
-                                         allow_redirects=False)
+                                         allow_redirects=follow_redirects)
         elapsed = int((time.time() - start) * 1000)
         resp_body = resp.text[:2000]
         resp_headers = dict(resp.headers)
@@ -413,6 +416,7 @@ def run_batch_test():
     custom_headers = data.get("custom_headers", {})
     delay_ms = data.get("delay", 200)
     timeout = data.get("timeout", 10)
+    follow_redirects = data.get("follow_redirects", True)
 
     def generate():
         index = 0
@@ -444,7 +448,7 @@ def run_batch_test():
                         target_url, injection_point, encoded_payload,
                         custom_headers, is_bot_ua=is_bot_ua)
 
-                    resp = send_request(url, method, headers, body, timeout)
+                    resp = send_request(url, method, headers, body, timeout, follow_redirects)
                     result = {
                         "type": "result",
                         "index": index,
@@ -468,7 +472,7 @@ def run_batch_test():
                 index += 1
                 url, headers, body = prepare_request(
                     target_url, injection_point, "", custom_headers)
-                resp = send_request(url, method, headers, body, timeout)
+                resp = send_request(url, method, headers, body, timeout, follow_redirects)
                 result = {
                     "type": "result",
                     "index": index,

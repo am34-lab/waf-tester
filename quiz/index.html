@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CISSP クイズ</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --surface2: #334155;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --success: #22c55e;
+      --error: #ef4444;
+      --warning: #f59e0b;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --border: #334155;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; line-height: 1.6; }
+    .container { max-width: 800px; margin: 0 auto; padding: 24px 16px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 16px; }
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.15s; }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
+    .btn-outline:hover { background: var(--surface2); }
+    .btn-danger { background: var(--error); color: white; }
+    .btn-danger:hover { opacity: 0.85; }
+    .btn-lg { padding: 14px 28px; font-size: 16px; }
+    .screen { display: none; }
+    .screen.active { display: block; }
+    .app-title { font-size: 28px; font-weight: 700; margin-bottom: 4px; }
+    .app-subtitle { color: var(--text-muted); margin-bottom: 32px; }
+    .domain-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin-bottom: 24px; }
+    .domain-card { background: var(--surface); border: 2px solid var(--border); border-radius: var(--radius); padding: 16px; cursor: pointer; transition: all 0.15s; user-select: none; }
+    .domain-card:hover { border-color: var(--accent); background: var(--surface2); }
+    .domain-card.selected { border-color: var(--accent); background: rgba(59,130,246,0.1); }
+    .domain-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+    .domain-number { font-size: 11px; background: var(--accent); color: white; padding: 2px 8px; border-radius: 100px; font-weight: 600; }
+    .domain-name { font-weight: 600; font-size: 14px; margin-bottom: 2px; }
+    .progress-bar { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; margin-top: 8px; }
+    .progress-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.3s; }
+    .progress-text { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+    .action-buttons { display: flex; flex-wrap: wrap; gap: 12px; }
+    .quiz-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .quiz-progress-label { font-size: 14px; color: var(--text-muted); }
+    .domain-badge { display: inline-block; font-size: 12px; background: var(--surface2); padding: 4px 12px; border-radius: 100px; color: var(--text-muted); margin-bottom: 12px; }
+    .question-text { font-size: 17px; font-weight: 500; margin-bottom: 24px; line-height: 1.7; }
+    .options-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 8px; }
+    .option-btn { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; background: var(--surface); border: 2px solid var(--border); border-radius: 10px; cursor: pointer; text-align: left; color: var(--text); font-size: 15px; line-height: 1.5; transition: all 0.15s; }
+    .option-btn:hover:not(:disabled) { border-color: var(--accent); background: var(--surface2); }
+    .option-btn:disabled { cursor: not-allowed; }
+    .option-btn.correct { border-color: var(--success); background: rgba(34,197,94,0.1); }
+    .option-btn.incorrect { border-color: var(--error); background: rgba(239,68,68,0.1); }
+    .option-label { font-weight: 700; min-width: 20px; color: var(--text-muted); flex-shrink: 0; }
+    .explanation-box { background: var(--surface2); border-left: 4px solid var(--accent); padding: 16px; border-radius: 0 8px 8px 0; margin-top: 16px; display: none; }
+    .explanation-box.visible { display: block; }
+    .explanation-title { font-weight: 700; margin-bottom: 8px; color: var(--accent); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .explanation-text { font-size: 14px; line-height: 1.7; color: var(--text-muted); }
+    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center; }
+    .stat-value { font-size: 36px; font-weight: 700; color: var(--accent); }
+    .stat-label { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+    .result-score { font-size: 72px; font-weight: 700; text-align: center; margin: 16px 0; }
+    .result-score.high { color: var(--success); }
+    .result-score.mid { color: var(--warning); }
+    .result-score.low { color: var(--error); }
+    .import-area { border: 2px dashed var(--border); border-radius: var(--radius); padding: 40px; text-align: center; cursor: pointer; transition: all 0.15s; }
+    .import-area:hover, .import-area.drag-over { border-color: var(--accent); background: rgba(59,130,246,0.05); }
+    .nav { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+    .nav-back { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 14px; display: flex; align-items: center; gap: 6px; padding: 0; }
+    .nav-back:hover { color: var(--text); }
+    .alert { padding: 12px 16px; border-radius: 8px; font-size: 14px; margin-top: 12px; }
+    .alert-success { background: rgba(34,197,94,0.1); border: 1px solid var(--success); color: var(--success); }
+    .alert-error { background: rgba(239,68,68,0.1); border: 1px solid var(--error); color: var(--error); }
+    .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+    pre { background: var(--surface2); padding: 16px; border-radius: 8px; font-size: 12px; overflow-x: auto; line-height: 1.6; }
+    @media (max-width: 600px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .action-buttons .btn { width: 100%; justify-content: center; }
+      .quiz-progress-label { font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- HOME -->
+  <div id="screen-home" class="screen active">
+    <h1 class="app-title">CISSP クイズ</h1>
+    <p class="app-subtitle">問題を解いてCISSP試験に備えよう</p>
+    <div class="card">
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px">ドメイン絞り込み（タップで選択 / 未選択なら全ドメムから出題）</div>
+      <div class="domain-grid" id="domain-grid"></div>
+      <hr class="divider">
+      <div class="action-buttons">
+        <button class="btn btn-primary btn-lg" onclick="startQuiz()">▶ クイズ開始</button>
+        <button class="btn btn-outline" onclick="startWeakReview()">🔁 苦手問題を復習</button>
+        <button class="btn btn-outline" onclick="showStats()">📊 統計を見る</button>
+        <button class="btn btn-outline" onclick="showImport()">📂 問題をインポート</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- QUIZ -->
+  <div id="screen-quiz" class="screen">
+    <div class="quiz-header">
+      <button class="nav-back" onclick="showHome()">← ホーム</button>
+      <span class="quiz-progress-label" id="quiz-progress-label">1 / 10</span>
+    </div>
+    <div class="progress-bar" style="height:8px;margin-bottom:20px">
+      <div class="progress-fill" id="quiz-progress-bar" style="width:0%"></div>
+    </div>
+    <div class="card">
+      <span class="domain-badge" id="quiz-domain-badge"></span>
+      <p class="question-text" id="quiz-question"></p>
+      <div class="options-list" id="quiz-options"></div>
+      <div class="explanation-box" id="explanation-box">
+        <div class="explanation-title">解説</div>
+        <div class="explanation-text" id="explanation-text"></div>
+      </div>
+      <button class="btn btn-primary" id="next-btn" style="display:none;margin-top:20px" onclick="nextQuestion()">次の問題 →</button>
+    </div>
+  </div>
+
+  <!-- RESULT -->
+  <div id="screen-result" class="screen">
+    <div class="card" style="text-align:center">
+      <h2 style="font-size:20px;margin-bottom:4px">クイズ完了！</h2>
+      <div class="result-score" id="result-score"></div>
+      <p id="result-label" style="color:var(--text-muted);margin-bottom:24px"></p>
+      <div id="result-breakdown" style="text-align:left;margin-bottom:24px"></div>
+      <div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center">
+        <button class="btn btn-primary" onclick="replayQuiz()">もう一度</button>
+        <button class="btn btn-outline" onclick="startWeakReview()">🔁 苦手問題を復習</button>
+        <button class="btn btn-outline" onclick="showHome()">ホームへ</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div id="screen-stats" class="screen">
+    <div class="nav">
+      <button class="nav-back" onclick="showHome()">← ホーム</button>
+      <h2 style="font-size:18px">学習統計</h2>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-value" id="stat-total">0</div><div class="stat-label">総回答数</div></div>
+      <div class="stat-card"><div class="stat-value" id="stat-correct">0</div><div class="stat-label">正解数</div></div>
+      <div class="stat-card"><div class="stat-value" id="stat-rate" style="color:var(--success)">0%</div><div class="stat-label">正解率</div></div>
+    </div>
+    <div class="card">
+      <h3 style="margin-bottom:16px;font-size:15px">ドメイン別成績</h3>
+      <div id="stats-domain-list"></div>
+    </div>
+    <div class="card">
+      <h3 style="margin-bottom:16px;font-size:15px">苦手問題 Top 5</h3>
+      <div id="stats-weak-list"></div>
+    </div>
+    <button class="btn btn-danger" onclick="resetStats()">統計をリセット</button>
+  </div>
+
+  <!-- IMPORT -->
+  <div id="screen-import" class="screen">
+    <div class="nav">
+      <button class="nav-back" onclick="showHome()">← ホーム</button>
+      <h2 style="font-size:18px">問題をインポート</h2>
+    </div>
+    <div class="card">
+      <h3 style="margin-bottom:8px">JSONファイルからインポート</h3>
+      <p style="color:var(--text-muted);font-size:14px;margin-bottom:16px">
+        KindleのCISSP問題集を手動でJSONに書き起こしてインポートできます。インポートした問題はブラウザに保存されます。
+      </p>
+      <div class="import-area" id="import-area" onclick="document.getElementById('file-input').click()">
+        <div style="font-size:40px;margin-bottom:8px">📂</div>
+        <div style="font-weight:600;margin-bottom:4px">クリックまたはドラッグ＆ドロップ</div>
+        <div style="font-size:13px;color:var(--text-muted)">.json ファイルを選択</div>
+        <input type="file" id="file-input" accept=".json" style="display:none" onchange="importFile(event)">
+      </div>
+      <div id="import-result"></div>
+      <hr class="divider">
+      <h4 style="font-size:13px;margin-bottom:8px;color:var(--text-muted)">JSONフォーマット（配列形式）:</h4>
+      <pre><code>[
+  {
+    "domainId": 1,
+    "question": "Which of the following BEST describes due care?",
+    "options": [
+      "Taking reasonable security precautions",
+      "Conducting annual security audits",
+      "Training all employees annually",
+      "Documenting all policies"
+    ],
+    "correct": 0,
+    "explanation": "Due care means taking reasonable precautions..."
+  }
+]</code></pre>
+      <p style="font-size:12px;color:var(--text-muted);margin-top:8px">correct は 0〜3 の数値（選択肢のインデックス）</p>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-weight:600;margin-bottom:4px">現在の問題数</div>
+          <div id="import-count" style="color:var(--text-muted);font-size:14px"></div>
+        </div>
+        <button class="btn btn-danger" id="clear-import-btn" onclick="clearImported()" style="display:none">インポートを削除</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script>
+// ===== DOMAINS =====
+const DOMAINS = [
+  { id:1, name:"Security and Risk Management",        ja:"セキュリティとリスク管理" },
+  { id:2, name:"Asset Security",                      ja:"資産セキュリティ" },
+  { id:3, name:"Security Architecture & Engineering", ja:"セキュリティアーキテクチャとエンジニアリング" },
+  { id:4, name:"Communication & Network Security",    ja:"通信とネットワークセキュリティ" },
+  { id:5, name:"Identity and Access Management",      ja:"アイデンティティとアクセス管理" },
+  { id:6, name:"Security Assessment & Testing",       ja:"セキュリティ評価とテスト" },
+  { id:7, name:"Security Operations",                 ja:"セキュリティ運用" },
+  { id:8, name:"Software Development Security",       ja:"ソフトウェア開発セキュリティ" },
+];
+
+// ===== BUILT-IN QUESTIONS =====
+const DEFAULT_QUESTIONS = [
+  // --- Domain 1 ---
+  { id:1,  domainId:1,
+    question:"Which of the following BEST describes the concept of 'due care'?",
+    options:["Taking reasonable security precautions appropriate to the level of risk","Conducting annual penetration tests and security audits","Ensuring all employees receive security awareness training each year","Documenting all security policies and keeping them up to date"],
+    correct:0,
+    explanation:"Due care means doing what a reasonable person would do — implementing appropriate security controls proportional to the risk. It demonstrates ethical and legal responsibility. Due diligence is the ongoing effort to maintain that care over time." },
+  { id:2,  domainId:1,
+    question:"An organization decides to purchase cyber-insurance rather than implement additional controls. Which risk treatment option does this represent?",
+    options:["Risk mitigation","Risk avoidance","Risk acceptance","Risk transference"],
+    correct:3,
+    explanation:"Risk transference (transfer) shifts the financial impact of a risk to a third party, such as an insurer. Risk mitigation reduces the likelihood or impact through controls. Risk avoidance eliminates the activity causing the risk. Risk acceptance means living with the risk without additional action." },
+  { id:3,  domainId:1,
+    question:"What is the PRIMARY purpose of information security within an organization?",
+    options:["To prevent all unauthorized access to systems","To support and enable the organization's business mission","To implement firewalls and intrusion detection systems","To achieve compliance with all applicable regulations"],
+    correct:1,
+    explanation:"The primary purpose of information security is to support the business mission and objectives. Security exists to enable business operations safely, not to block all activity. Controls, compliance, and technology all serve this overarching goal." },
+  { id:4,  domainId:1,
+    question:"Which of the following BEST describes the difference between a BCP and a DRP?",
+    options:["BCP is for IT recovery; DRP is for business process recovery","BCP maintains operations during a disruption; DRP restores normal operations afterward","BCP applies to natural disasters; DRP applies to cyber incidents","BCP and DRP are the same document with different names"],
+    correct:1,
+    explanation:"BCP (Business Continuity Plan) focuses on keeping critical operations running during a disaster. DRP (Disaster Recovery Plan) focuses on restoring IT systems and normal operations after the disaster. They are complementary: BCP keeps the business alive, DRP brings it back to full capacity." },
+  { id:5,  domainId:1,
+    question:"The quantitative value representing the expected financial loss from a threat each year is called the:",
+    options:["Single Loss Expectancy (SLE)","Annualized Loss Expectancy (ALE)","Asset Value (AV)","Exposure Factor (EF)"],
+    correct:1,
+    explanation:"ALE = SLE × ARO (Annualized Rate of Occurrence). SLE is the loss from a single incident. EF is the percentage of an asset's value lost per incident. ALE helps prioritize security investments by comparing control costs against expected annual losses." },
+
+  // --- Domain 2 ---
+  { id:6,  domainId:2,
+    question:"Which US government classification label protects the MOST sensitive information?",
+    options:["Confidential","Secret","Top Secret","Sensitive But Unclassified"],
+    correct:2,
+    explanation:"The US government classification hierarchy is: Unclassified → Confidential → Secret → Top Secret. Top Secret is used when unauthorized disclosure could cause 'exceptionally grave damage' to national security. Many organizations use similar tiered systems (e.g., Public → Internal → Confidential → Restricted)." },
+  { id:7,  domainId:2,
+    question:"Who bears PRIMARY responsibility for classifying organizational data?",
+    options:["Data custodian","Data owner","Security administrator","Chief Information Security Officer"],
+    correct:1,
+    explanation:"The data owner (typically a business manager) determines the classification and required protection level for data. The data custodian (usually IT) implements those protections. The CISO sets overall security policy. Correct assignment of ownership is essential — without it, data is often under- or over-protected." },
+  { id:8,  domainId:2,
+    question:"Residual data that persists on storage media after deletion attempts is called:",
+    options:["Data latency","Data remanence","Data persistence","Data entropy"],
+    correct:1,
+    explanation:"Data remanence is the residual representation of data remaining after deletion. Simply deleting a file doesn't remove the data — it may be recoverable with forensic tools. Secure disposal requires overwriting, degaussing, or physical destruction depending on the required assurance level." },
+  { id:9,  domainId:2,
+    question:"An organization is decommissioning hard drives containing classified data. Which method provides the HIGHEST assurance of unrecoverability?",
+    options:["Formatting the drive","Single-pass overwrite with zeros","Encrypting the data then deleting it","Physical destruction (shredding or incineration)"],
+    correct:3,
+    explanation:"Physical destruction provides the highest assurance because no intact media remains. Overwriting and encryption are effective for most purposes, but physical destruction ensures sophisticated recovery techniques (e.g., electron microscopy) cannot retrieve any data. The required method should match the data's sensitivity." },
+  { id:10, domainId:2,
+    question:"Under GDPR, which principle states that personal data should only be collected for specified, explicit, and legitimate purposes?",
+    options:["Data minimization","Purpose limitation","Storage limitation","Accuracy"],
+    correct:1,
+    explanation:"Purpose limitation (GDPR Art. 5(1)(b)) requires that personal data be collected for specified, explicit, and legitimate purposes and not processed incompatibly with those purposes. Data minimization (collect only what's needed) and storage limitation (don't keep longer than necessary) are related but distinct principles." },
+
+  // --- Domain 3 ---
+  { id:11, domainId:3,
+    question:"The Bell-LaPadula model's 'no read up' property is designed primarily to protect:",
+    options:["Data integrity","Data availability","Data confidentiality","Non-repudiation"],
+    correct:2,
+    explanation:"Bell-LaPadula focuses on confidentiality. 'No read up' prevents a subject from reading data at a higher classification level. 'No write down' prevents data from flowing to a lower level. This stops information from leaking from higher to lower security levels — common in military and government systems." },
+  { id:12, domainId:3,
+    question:"The Biba integrity model's 'no write up' rule states that:",
+    options:["A subject cannot write to an object at a higher integrity level","A subject cannot read from an object at a higher integrity level","A subject cannot write to an object at a lower integrity level","A subject cannot modify any classified information"],
+    correct:0,
+    explanation:"In Biba, 'no write up' prevents a lower-integrity subject from corrupting higher-integrity data. The complementary rule 'no read down' prevents a higher-integrity subject from reading lower-integrity data (which might corrupt their work). Biba is the integrity-focused counterpart to Bell-LaPadula's confidentiality focus." },
+  { id:13, domainId:3,
+    question:"Which of the following is an ASYMMETRIC encryption algorithm?",
+    options:["AES (Advanced Encryption Standard)","3DES (Triple DES)","RSA (Rivest-Shamir-Adleman)","Blowfish"],
+    correct:2,
+    explanation:"RSA uses a key pair (public key to encrypt, private key to decrypt) — making it asymmetric. AES, 3DES, and Blowfish are all symmetric algorithms using the same key for encryption and decryption. Asymmetric algorithms are used for key exchange and digital signatures; symmetric algorithms are faster and used for bulk data encryption." },
+  { id:14, domainId:3,
+    question:"What is the purpose of adding a 'salt' to a password before hashing?",
+    options:["To speed up the hash computation","To allow administrators to recover the password","To prevent rainbow table attacks","To encrypt the hash output"],
+    correct:2,
+    explanation:"A salt is a random value added to the password before hashing, ensuring that identical passwords produce different hashes. This defeats rainbow table attacks (pre-computed hash lookup tables), because an attacker would need a unique rainbow table for every possible salt value. Salts do NOT enable password recovery." },
+  { id:15, domainId:3,
+    question:"The Trusted Computing Base (TCB) is best described as:",
+    options:["A network of trusted third-party certificate authorities","All hardware, firmware, and software critical to enforcing a system's security policy","A baseline configuration used as a security reference point","A cryptographic chip that stores encryption keys"],
+    correct:1,
+    explanation:"The TCB is the totality of protection mechanisms (hardware, firmware, software) that enforce the security policy of a system. Minimizing the TCB reduces the attack surface and simplifies security verification. The smaller and simpler the TCB, the easier it is to trust and audit." },
+
+  // --- Domain 4 ---
+  { id:16, domainId:4,
+    question:"At which OSI layer does SSL/TLS primarily operate?",
+    options:["Layer 2 – Data Link","Layer 3 – Network","Layer 4 – Transport","Layer 5 – Session"],
+    correct:3,
+    explanation:"TLS primarily operates at Layer 5 (Session), bridging the transport and application layers. It provides encryption, authentication, and integrity for application-layer protocols like HTTPS, SMTPS, and IMAPS. While some CISSP materials describe it as Layer 4/6, the most accepted CISSP answer is Layer 5 (Session)." },
+  { id:17, domainId:4,
+    question:"Which firewall type tracks the state of TCP connections and uses that context for filtering?",
+    options:["Packet filtering firewall","Stateful inspection firewall","Application proxy firewall","Circuit-level gateway"],
+    correct:1,
+    explanation:"Stateful inspection firewalls maintain a connection state table and evaluate packets in the context of established connections. Unlike simple packet filters (which inspect each packet in isolation), stateful firewalls can detect packets that don't belong to legitimate connections, providing stronger protection." },
+  { id:18, domainId:4,
+    question:"Which attack exhausts a server's resources by sending many TCP SYN packets without completing the handshake?",
+    options:["Smurf attack","SYN flood","Fraggle attack","Ping of Death"],
+    correct:1,
+    explanation:"A SYN flood is a DoS attack where the attacker sends SYN packets but never responds to SYN-ACKs, leaving the server with many half-open connections. Eventually the server's connection table fills up and it can't accept legitimate connections. Mitigations include SYN cookies, rate limiting, and firewall rules." },
+  { id:19, domainId:4,
+    question:"What does DNSSEC provide?",
+    options:["Encryption of DNS queries in transit","Authentication of DNS responses to prevent spoofing","Load balancing across DNS servers","Filtering of malicious domain names"],
+    correct:1,
+    explanation:"DNSSEC uses digital signatures to authenticate DNS responses, ensuring records haven't been tampered with. It prevents DNS cache poisoning (spoofing). DNSSEC authenticates but does NOT encrypt DNS queries — encryption is handled by DNS over HTTPS (DoH) or DNS over TLS (DoT)." },
+  { id:20, domainId:4,
+    question:"Which VPN protocol is often paired with IPsec to provide encryption for Layer 2 tunneling?",
+    options:["PPTP","L2TP","OpenVPN","SSH tunneling"],
+    correct:1,
+    explanation:"L2TP (Layer 2 Tunneling Protocol) provides tunneling but no encryption on its own. It's commonly deployed as L2TP/IPsec, where IPsec provides the encryption. PPTP is older and considered insecure. OpenVPN uses SSL/TLS. SSH tunneling is port-forwarding based and mainly for administrative access." },
+
+  // --- Domain 5 ---
+  { id:21, domainId:5,
+    question:"Which authentication factor category does a fingerprint belong to?",
+    options:["Something you know","Something you have","Something you are","Somewhere you are"],
+    correct:2,
+    explanation:"The three classic authentication factors are: something you know (passwords, PINs), something you have (smart cards, hardware tokens), and something you are (biometrics: fingerprints, retina, voice). Multi-factor authentication (MFA) combines two or more different factor types, making compromise much harder." },
+  { id:22, domainId:5,
+    question:"Which access control model assigns access based on sensitivity labels and user clearance levels?",
+    options:["Discretionary Access Control (DAC)","Mandatory Access Control (MAC)","Role-Based Access Control (RBAC)","Attribute-Based Access Control (ABAC)"],
+    correct:1,
+    explanation:"Mandatory Access Control (MAC) uses labels (e.g., SECRET, TOP SECRET) on objects and clearance levels on subjects. The OS/system enforces access based on label comparisons — users cannot override this. MAC is common in government and military systems. DAC lets owners grant access; RBAC uses job roles; ABAC uses multiple attributes." },
+  { id:23, domainId:5,
+    question:"Kerberos authentication uses which mechanism to prove identity without re-entering credentials for each service?",
+    options:["X.509 certificates","One-time passwords","Tickets issued by a Key Distribution Center","SAML assertions from an Identity Provider"],
+    correct:2,
+    explanation:"Kerberos issues a Ticket-Granting Ticket (TGT) after initial authentication at the Key Distribution Center (KDC). The user presents the TGT to get service tickets for specific resources — without re-entering passwords. Kerberos provides mutual authentication and is the default protocol in Active Directory environments." },
+  { id:24, domainId:5,
+    question:"The principle of least privilege requires that users be granted:",
+    options:["Minimum access rights needed to perform their job functions","Administrative access only through separate accounts","Access rights that are reviewed and re-certified annually","No access to production systems by default"],
+    correct:0,
+    explanation:"Least privilege means granting the minimum permissions necessary to perform authorized tasks — nothing more. This limits the blast radius of compromised accounts or insider threats. It applies to users, services, and system processes. Related concepts: need-to-know (limiting data access) and separation of duties (splitting critical tasks)." },
+  { id:25, domainId:5,
+    question:"Which technology allows a user to authenticate once and then access multiple systems without logging in again?",
+    options:["Multi-Factor Authentication (MFA)","Single Sign-On (SSO)","Public Key Infrastructure (PKI)","Role-Based Access Control (RBAC)"],
+    correct:1,
+    explanation:"SSO authenticates a user once and issues credentials (tokens, tickets) that grant access to multiple applications. This improves UX and can improve security by reducing password reuse. MFA adds authentication factors but doesn't eliminate repeated logins. Federated Identity extends SSO across organizational boundaries using standards like SAML or OIDC." },
+
+  // --- Domain 6 ---
+  { id:26, domainId:6,
+    question:"In a 'black box' penetration test, the tester is provided:",
+    options:["Full network diagrams and source code","Only the target's IP range or domain name","User credentials and system documentation","Complete internal network topology"],
+    correct:1,
+    explanation:"Black box (external) testing gives the tester minimal information, simulating an outside attacker with no insider knowledge. White box provides full information (code, architecture). Gray box provides partial information (e.g., user credentials but no source code). Each approach reveals different types of vulnerabilities." },
+  { id:27, domainId:6,
+    question:"Which BEST describes the difference between vulnerability scanning and penetration testing?",
+    options:["Vulnerability scanning is automated and identifies weaknesses; penetration testing actively exploits them","Vulnerability scanning is more thorough and takes longer","Penetration testing identifies vulnerabilities; scanning exploits them","There is no meaningful difference between the two"],
+    correct:0,
+    explanation:"Vulnerability scanning uses automated tools to identify potential weaknesses without exploiting them. Penetration testing goes further — skilled testers manually attempt to exploit vulnerabilities to demonstrate real risk. Pen tests require explicit written authorization. Both are part of a comprehensive security assessment program." },
+  { id:28, domainId:6,
+    question:"Which CVSS metric describes the conditions beyond the attacker's control that must exist to exploit a vulnerability?",
+    options:["Attack Vector","Attack Complexity","Privileges Required","Scope"],
+    correct:1,
+    explanation:"Attack Complexity (AC) in CVSS describes pre-existing conditions the attacker cannot control — such as specific network positions or race conditions. Low AC means attacks can be reliably repeated. High AC means special conditions must align. Attack Vector (AV) describes whether the exploit is network, adjacent, local, or physical." },
+  { id:29, domainId:6,
+    question:"Which testing methodology analyzes source code WITHOUT executing the application?",
+    options:["Dynamic Application Security Testing (DAST)","Fuzz testing","Static Application Security Testing (SAST)","Runtime Application Self-Protection (RASP)"],
+    correct:2,
+    explanation:"SAST (Static Application Security Testing) analyzes code, bytecode, or binaries without running the application. It can find vulnerabilities early in development (shift left). DAST tests running applications by sending inputs and observing responses. Fuzzing sends unexpected/random data to find crashes — it's dynamic testing." },
+  { id:30, domainId:6,
+    question:"What is the PRIMARY security purpose of reviewing system and application logs?",
+    options:["Generating performance metrics for management","Detecting anomalies, security events, and policy violations","Verifying that backup jobs complete successfully","Auditing user access rights for compliance"],
+    correct:1,
+    explanation:"Log review detects suspicious activity, security events, anomalies, and policy violations. A SIEM (Security Information and Event Management) system aggregates and correlates logs from multiple sources to enable real-time alerting and forensic investigation. Logs must be protected from tampering and retained per policy." },
+
+  // --- Domain 7 ---
+  { id:31, domainId:7,
+    question:"Which incident response phase involves restoring systems to normal operation?",
+    options:["Containment","Eradication","Recovery","Post-incident activity"],
+    correct:2,
+    explanation:"NIST SP 800-61 defines: Preparation → Detection & Analysis → Containment, Eradication & Recovery → Post-Incident Activity. Recovery restores systems to normal operation after threats are removed. Containment limits spread. Eradication removes malware or attacker access. Post-incident (lessons learned) improves future response." },
+  { id:32, domainId:7,
+    question:"Maintaining chain of custody in digital forensics is MOST important because:",
+    options:["It speeds up the forensic investigation","It ensures evidence remains admissible in legal proceedings","It allows multiple investigators to work concurrently","It protects evidence from malware infection"],
+    correct:1,
+    explanation:"Chain of custody documents who had possession of evidence, when, where, and why. Courts require proof that evidence was not tampered with. A broken chain of custody can render evidence inadmissible, potentially undermining a criminal prosecution or civil case. All handling must be logged and evidence must be stored securely." },
+  { id:33, domainId:7,
+    question:"Which backup type captures only the data changed since the LAST FULL backup?",
+    options:["Full backup","Differential backup","Incremental backup","Mirror backup"],
+    correct:1,
+    explanation:"Differential backup captures all changes since the last full backup. It grows larger each day but recovery requires only two sets: last full + last differential. Incremental backup captures changes since the last backup of any type — each set is smaller, but recovery requires the full backup plus ALL incremental sets since." },
+  { id:34, domainId:7,
+    question:"Separation of duties is PRIMARILY designed to prevent:",
+    options:["Unauthorized physical access to data centers","A single person from having sufficient access to commit fraud undetected","Employees from accessing systems after working hours","External attackers from compromising administrator accounts"],
+    correct:1,
+    explanation:"Separation of duties (SoD) splits critical tasks between multiple people so no single individual can complete a sensitive action alone — making fraud, errors, or malicious actions harder to conceal. Example: the person who creates a vendor should not also be the one who approves payments to that vendor. It's a key internal control." },
+  { id:35, domainId:7,
+    question:"Which process ensures that system changes are reviewed, tested, and approved before deployment?",
+    options:["Configuration management","Change management","Patch management","Capacity management"],
+    correct:1,
+    explanation:"Change management controls modifications to the IT environment to minimize risk and unplanned downtime. It includes: request → review → approval → testing → implementation → review. Unauthorized or poorly tested changes are a leading cause of outages and security incidents. Configuration management tracks the current known-good state of systems." },
+
+  // --- Domain 8 ---
+  { id:36, domainId:8,
+    question:"During which SDLC phase should security requirements FIRST be identified?",
+    options:["Testing","Design","Requirements","Implementation"],
+    correct:2,
+    explanation:"Security should be addressed as early as possible — in the Requirements phase. This 'shift left' approach is far cheaper: fixing a security flaw in requirements costs ~1× while fixing it in production can cost 100× more. Security should be designed in from the start, not added as a late-stage check." },
+  { id:37, domainId:8,
+    question:"Which vulnerability occurs when attacker-supplied SQL code is inserted into an application's database query?",
+    options:["Cross-Site Scripting (XSS)","SQL Injection","Buffer Overflow","Path Traversal"],
+    correct:1,
+    explanation:"SQL Injection occurs when unsanitized user input is embedded directly in SQL queries, allowing attackers to read, modify, or delete data, bypass authentication, or execute OS commands. Prevention: use parameterized queries (prepared statements) or stored procedures, apply input validation, and run database accounts with least privilege." },
+  { id:38, domainId:8,
+    question:"Which attack injects malicious client-side scripts into web pages viewed by other users?",
+    options:["SQL Injection","Cross-Site Request Forgery (CSRF)","Cross-Site Scripting (XSS)","Command Injection"],
+    correct:2,
+    explanation:"XSS (Cross-Site Scripting) injects JavaScript into pages viewed by victims, allowing theft of cookies/session tokens, page defacement, or phishing. Stored XSS persists in the database; Reflected XSS is embedded in a URL. Prevention: output encoding, Content Security Policy (CSP), and input validation." },
+  { id:39, domainId:8,
+    question:"DevSecOps primarily advocates:",
+    options:["Replacing the security team with automated tools","Integrating security into every phase of the DevOps pipeline","Conducting security reviews only before production releases","Using only open-source security tools"],
+    correct:1,
+    explanation:"DevSecOps extends DevOps by making security a shared, continuous responsibility across development, operations, and security teams. Automated tools (SAST, DAST, SCA, container scanning) are embedded in CI/CD pipelines so security checks happen on every commit, not as a final gate — enabling speed without sacrificing security." },
+  { id:40, domainId:8,
+    question:"Which activity helps developers proactively identify security weaknesses by thinking like an attacker during design?",
+    options:["Code review","Threat modeling","Penetration testing","Fuzz testing"],
+    correct:1,
+    explanation:"Threat modeling (e.g., STRIDE, DREAD, PASTA) is a structured approach performed during design to identify potential threats, attack vectors, and countermeasures before any code is written. It is the most cost-effective way to find architectural security flaws. Common frameworks: STRIDE (Microsoft), PASTA, LINDDUN for privacy threats." },
+];
+
+// ===== STATE =====
+let importedQuestions = loadImported();
+let allQuestions = [...DEFAULT_QUESTIONS, ...importedQuestions];
+let quizQuestions = [];
+let currentQuestionIndex = 0;
+let sessionResults = [];
+let selectedDomains = new Set();
+let stats = loadStats();
+let lastQuizPool = null;
+
+// ===== PERSISTENCE =====
+function loadStats() {
+  try { return JSON.parse(localStorage.getItem('cissp_stats') || '{}'); }
+  catch { return {}; }
+}
+function saveStats() {
+  localStorage.setItem('cissp_stats', JSON.stringify(stats));
+}
+function loadImported() {
+  try { return JSON.parse(localStorage.getItem('cissp_imported') || '[]'); }
+  catch { return []; }
+}
+function saveImported(qs) {
+  localStorage.setItem('cissp_imported', JSON.stringify(qs));
+}
+function resetStats() {
+  if (!confirm('統計をリセットしますか？この操作は元に戻せません。')) return;
+  stats = {};
+  saveStats();
+  showStats();
+}
+function clearImported() {
+  if (!confirm('インポートした問題を削除しますか？')) return;
+  importedQuestions = [];
+  saveImported([]);
+  allQuestions = [...DEFAULT_QUESTIONS];
+  updateImportScreen();
+  renderDomainGrid();
+}
+
+// ===== DOMAIN GRID =====
+function renderDomainGrid() {
+  const grid = document.getElementById('domain-grid');
+  grid.innerHTML = DOMAINS.map(d => {
+    const ds = domainStats(d.id);
+    const pct = ds.total > 0 ? Math.round(ds.correct / ds.total * 100) : 0;
+    const count = allQuestions.filter(q => q.domainId === d.id).length;
+    const sel = selectedDomains.has(d.id);
+    return `<div class="domain-card${sel ? ' selected' : ''}" onclick="toggleDomain(${d.id})">
+      <div class="domain-card-header">
+        <span class="domain-number">Domain ${d.id}</span>
+        <span style="font-size:12px;color:var(--text-muted)">${count}問</span>
+      </div>
+      <div class="domain-name">${d.ja}</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">${d.name}</div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+      <div class="progress-text">${ds.total > 0 ? `${ds.correct}/${ds.total}問正解 (${pct}%)` : '未回答'}</div>
+    </div>`;
+  }).join('');
+}
+function toggleDomain(id) {
+  selectedDomains.has(id) ? selectedDomains.delete(id) : selectedDomains.add(id);
+  renderDomainGrid();
+}
+function domainStats(domainId) {
+  let total = 0, correct = 0;
+  allQuestions.filter(q => q.domainId === domainId).forEach(q => {
+    const s = stats[q.id];
+    if (s) { total += s.correct + s.incorrect; correct += s.correct; }
+  });
+  return { total, correct };
+}
+
+// ===== QUIZ =====
+function buildPool() {
+  return selectedDomains.size > 0
+    ? allQuestions.filter(q => selectedDomains.has(q.domainId))
+    : [...allQuestions];
+}
+function selectQuestions(pool, count) {
+  const weighted = pool.map(q => {
+    const s = stats[q.id];
+    if (!s || s.correct + s.incorrect === 0) return { q, w: 2 };
+    return { q, w: 1 + (s.incorrect / (s.correct + s.incorrect)) * 3 };
+  });
+  const shuffled = weighted.sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, Math.min(count, shuffled.length)).map(x => x.q).sort(() => Math.random() - 0.5);
+}
+function startQuiz() {
+  const pool = buildPool();
+  if (!pool.length) { alert('選択したドメインに問題がありません。'); return; }
+  lastQuizPool = pool;
+  quizQuestions = selectQuestions(pool, 10);
+  launchQuiz();
+}
+function replayQuiz() {
+  if (!lastQuizPool) { startQuiz(); return; }
+  quizQuestions = selectQuestions(lastQuizPool, 10);
+  launchQuiz();
+}
+function startWeakReview() {
+  const weak = allQuestions
+    .filter(q => stats[q.id] && stats[q.id].incorrect > 0)
+    .sort((a, b) => {
+      const ra = stats[a.id].incorrect / (stats[a.id].correct + stats[a.id].incorrect);
+      const rb = stats[b.id].incorrect / (stats[b.id].correct + stats[b.id].incorrect);
+      return rb - ra;
+    }).slice(0, 10);
+  if (!weak.length) { alert('まだ間違えた問題はありません。先にクイズに挑戦しましょう！'); return; }
+  quizQuestions = weak;
+  launchQuiz();
+}
+function launchQuiz() {
+  currentQuestionIndex = 0;
+  sessionResults = [];
+  showScreen('quiz');
+  renderQuestion();
+}
+function renderQuestion() {
+  const q = quizQuestions[currentQuestionIndex];
+  const domain = DOMAINS.find(d => d.id === q.domainId);
+  const total = quizQuestions.length;
+  document.getElementById('quiz-progress-label').textContent = `${currentQuestionIndex + 1} / ${total}`;
+  document.getElementById('quiz-progress-bar').style.width = (currentQuestionIndex / total * 100) + '%';
+  document.getElementById('quiz-domain-badge').textContent = `Domain ${q.domainId}: ${domain.ja}`;
+  document.getElementById('quiz-question').textContent = q.question;
+  document.getElementById('quiz-options').innerHTML = ['A','B','C','D'].slice(0, q.options.length).map((lbl, i) =>
+    `<button class="option-btn" onclick="selectOption(${i})">
+      <span class="option-label">${lbl}.</span><span>${q.options[i]}</span>
+    </button>`
+  ).join('');
+  document.getElementById('explanation-box').classList.remove('visible');
+  document.getElementById('next-btn').style.display = 'none';
+}
+function selectOption(index) {
+  const q = quizQuestions[currentQuestionIndex];
+  document.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
+  const isCorrect = index === q.correct;
+  document.querySelectorAll('.option-btn')[index].classList.add(isCorrect ? 'correct' : 'incorrect');
+  if (!isCorrect) document.querySelectorAll('.option-btn')[q.correct].classList.add('correct');
+  if (!stats[q.id]) stats[q.id] = { correct: 0, incorrect: 0 };
+  isCorrect ? stats[q.id].correct++ : stats[q.id].incorrect++;
+  saveStats();
+  sessionResults.push({ q, isCorrect });
+  document.getElementById('explanation-text').textContent = q.explanation;
+  document.getElementById('explanation-box').classList.add('visible');
+  const nextBtn = document.getElementById('next-btn');
+  nextBtn.style.display = 'inline-flex';
+  nextBtn.textContent = currentQuestionIndex < quizQuestions.length - 1 ? '次の問題 →' : '結果を見る';
+}
+function nextQuestion() {
+  currentQuestionIndex++;
+  currentQuestionIndex < quizQuestions.length ? renderQuestion() : showResult();
+}
+
+// ===== RESULT =====
+function showResult() {
+  const correct = sessionResults.filter(r => r.isCorrect).length;
+  const total = sessionResults.length;
+  const pct = Math.round(correct / total * 100);
+  const scoreEl = document.getElementById('result-score');
+  scoreEl.textContent = pct + '%';
+  scoreEl.className = 'result-score ' + (pct >= 70 ? 'high' : pct >= 50 ? 'mid' : 'low');
+  document.getElementById('result-label').textContent =
+    pct >= 70 ? `${total}問中${correct}問正解 — 合格ライン超え！` :
+    pct >= 50 ? `${total}問中${correct}問正解 — もう少し！` :
+    `${total}問中${correct}問正解 — 要復習`;
+  const domainMap = {};
+  sessionResults.forEach(({ q, isCorrect }) => {
+    if (!domainMap[q.domainId]) domainMap[q.domainId] = { c: 0, t: 0 };
+    domainMap[q.domainId].t++;
+    if (isCorrect) domainMap[q.domainId].c++;
+  });
+  document.getElementById('result-breakdown').innerHTML = Object.entries(domainMap).map(([did, s]) => {
+    const d = DOMAINS.find(x => x.id == did);
+    const p = Math.round(s.c / s.t * 100);
+    return `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
+      <div style="font-size:13px"><strong>Domain ${did}:</strong> ${d.ja}</div>
+      <div style="font-weight:700;color:${p>=70?'var(--success)':p>=50?'var(--warning)':'var(--error)'}">${s.c}/${s.t}</div>
+    </div>`;
+  }).join('');
+  showScreen('result');
+}
+
+// ===== STATS =====
+function showStats() {
+  let total = 0, correct = 0;
+  Object.values(stats).forEach(s => { total += s.correct + s.incorrect; correct += s.correct; });
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-correct').textContent = correct;
+  document.getElementById('stat-rate').textContent = total > 0 ? Math.round(correct/total*100)+'%' : '0%';
+  document.getElementById('stats-domain-list').innerHTML = DOMAINS.map(d => {
+    const ds = domainStats(d.id);
+    const p = ds.total > 0 ? Math.round(ds.correct/ds.total*100) : null;
+    return `<div style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+        <span style="font-size:13px;font-weight:600">Domain ${d.id}: ${d.ja}</span>
+        <span style="font-size:13px;color:${p===null?'var(--text-muted)':p>=70?'var(--success)':p>=50?'var(--warning)':'var(--error)'}">${p!==null?p+'%':'未回答'}</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${p||0}%"></div></div>
+    </div>`;
+  }).join('');
+  const weak = allQuestions.filter(q => stats[q.id] && stats[q.id].incorrect > 0)
+    .sort((a,b) => stats[b.id].incorrect - stats[a.id].incorrect).slice(0,5);
+  document.getElementById('stats-weak-list').innerHTML = weak.length ? weak.map(q => {
+    const s = stats[q.id], d = DOMAINS.find(x => x.id===q.domainId);
+    return `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Domain ${q.domainId}: ${d.ja}</div>
+      <div style="font-size:13px;margin-bottom:4px">${q.question.length > 80 ? q.question.slice(0,80)+'…' : q.question}</div>
+      <span style="font-size:12px;color:var(--success)">✓ ${s.correct}正解</span>
+      <span style="font-size:12px;color:var(--error);margin-left:12px">✗ ${s.incorrect}不正解</span>
+    </div>`;
+  }).join('') : '<p style="color:var(--text-muted);font-size:14px">まだ間違えた問題はありません</p>';
+  showScreen('stats');
+}
+
+// ===== IMPORT =====
+function showImport() {
+  updateImportScreen();
+  showScreen('import');
+}
+function updateImportScreen() {
+  document.getElementById('import-count').textContent =
+    `デフォルト ${DEFAULT_QUESTIONS.length}問 + インポート済み ${importedQuestions.length}問 = 合計 ${allQuestions.length}問`;
+  document.getElementById('clear-import-btn').style.display = importedQuestions.length > 0 ? 'inline-flex' : 'none';
+}
+function importFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!Array.isArray(data)) throw new Error('配列形式のJSONが必要です');
+      const newQs = data.map((q, i) => ({ ...q, id: 'imp_' + Date.now() + '_' + i }));
+      importedQuestions = [...importedQuestions, ...newQs];
+      saveImported(importedQuestions);
+      allQuestions = [...DEFAULT_QUESTIONS, ...importedQuestions];
+      document.getElementById('import-result').innerHTML =
+        `<div class="alert alert-success">✓ ${newQs.length}問をインポートしました！</div>`;
+      updateImportScreen();
+      renderDomainGrid();
+    } catch(err) {
+      document.getElementById('import-result').innerHTML =
+        `<div class="alert alert-error">エラー: ${err.message}</div>`;
+    }
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+// Drag & drop
+const importArea = document.getElementById('import-area');
+importArea.addEventListener('dragover', e => { e.preventDefault(); importArea.classList.add('drag-over'); });
+importArea.addEventListener('dragleave', () => importArea.classList.remove('drag-over'));
+importArea.addEventListener('drop', e => {
+  e.preventDefault();
+  importArea.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) { document.getElementById('file-input').files; importFile({ target: { files: [file], value: '' } }); }
+});
+
+// ===== SCREEN =====
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  window.scrollTo(0, 0);
+}
+function showHome() { renderDomainGrid(); showScreen('home'); }
+
+// ===== INIT =====
+renderDomainGrid();
+</script>
+</body>
+</html>
